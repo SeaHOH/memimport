@@ -17,7 +17,7 @@ def wheel_name(**kwargs):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Return wheel name.')
-    parser.add_argument('version', action='store', type=str, help='Version number.')
+    parser.add_argument('version', help='Version number.')
     args = parser.parse_args()
 
     warnings.simplefilter("ignore")
