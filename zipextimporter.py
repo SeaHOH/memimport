@@ -1,7 +1,7 @@
 r"""zipextimporter - an importer which can import extension modules
 from zipfiles without unpacking them to the file system.
 
-This file and _memimporter.pyd is part of the py2exe package.
+This file is part of the py2exe package.
 
 Overview
 ========
@@ -15,8 +15,8 @@ or call the zipextimporter.install() function to install the import hook,
 add a zip-file containing .pyd or .dll extension modules to sys.path,
 and import them.
 
-It uses the _memimporter extension which uses code from Joachim
-Bauch's MemoryModule library.  This library emulates the win32 api
+It uses the _memimporter (memimport) extension which uses code from
+Joachim Bauch's MemoryModule library. This library emulates the win32 api
 function LoadLibrary.
 
 Sample usage
@@ -47,9 +47,8 @@ import sys
 from zipimport import zipimporter, ZipImportError
 from _frozen_importlib import ModuleSpec
 
-# _memimporter is a module built into the py2exe runstubs,
-# or a standalone extension module of memimporter.
-import _memimporter
+from memimport import memimport, get_verbose_flag
+
 
 pyver = '%d%d' % sys.version_info[:2]
 
@@ -59,9 +58,15 @@ class ZipExtensionImporter(zipimporter):
     '''
     from importlib.machinery import EXTENSION_SUFFIXES as suffixes
     suffixes = suffixes + ['.dll', '']
-    suffixes_pyver = [f'{pyver}{suffix}' for suffix in suffixes] + suffixes
+    suffixes_pkg = [(f'\\__init__{suffix}', True) for suffix in suffixes]
+    suffixes_pyver = [(f'{pyver}{suffix}', False) for suffix in suffixes
+                      if pyver not in suffix]
+    suffixes = [(suffix, False) for suffix in suffixes]
+    suffixes += suffixes_pkg
+    suffixes_pyver += suffixes
     names_pyver = 'pywintypes', 'pythoncom'
-    verbose = _memimporter.get_verbose_flag()
+    verbose = get_verbose_flag()
+    del suffixes_pkg
 
     def __init__(self, path_or_importer):
         if isinstance(path_or_importer, zipimporter):
@@ -84,7 +89,10 @@ class ZipExtensionImporter(zipimporter):
             self._zipextimporter = zipextimporter = ZipExtensionImporter(self)
         return zipextimporter
 
-    def find_extension(self, fullname):
+    def find_extension(self, fullname, cache={}):
+        path_info = cache.get(fullname)
+        if path_info:
+            return path_info
         name = fullname.rpartition('.')[2]
         initname = f'PyInit_{name}'.encode()
         _path = self.prefix + name
@@ -92,10 +100,10 @@ class ZipExtensionImporter(zipimporter):
             suffixes = self.suffixes_pyver
         else:
             suffixes = self.suffixes
-        for suffix in suffixes:
+        for suffix, is_package in suffixes:
             path = _path + suffix
             if path in self._files:
-                if suffix == '.dll' and initname not in self.get_data(path):
+                if not suffix.endswith('.pyd') and initname not in self.get_data(path):
                     if self.verbose > 1:
                         print(f'# found {path} in zipfile {self.archive}, '
                                'but it is not a Python extension',
@@ -104,7 +112,9 @@ class ZipExtensionImporter(zipimporter):
                 if self.verbose > 1:
                     print(f'# found {path} in zipfile {self.archive}',
                           file=sys.stderr)
-                return path
+                cache[fullname] = path_info = f'{self.archive}\\{path}', is_package
+                return path_info
+        return None, None
 
     if hasattr(zipimporter, 'find_loader'):
         def find_loader(self, fullname, path=None):
@@ -115,8 +125,8 @@ class ZipExtensionImporter(zipimporter):
             if loader is not None:
                 return loader, portion
             zipextimporter = self.zipextimporter
-            extension = zipextimporter.find_extension(fullname)
-            return extension and zipextimporter, []
+            path, is_package = zipextimporter.find_extension(fullname)
+            return path and zipextimporter, []
 
     if hasattr(zipimporter, 'find_spec'):
         def find_spec(self, fullname, target=None):
@@ -127,35 +137,21 @@ class ZipExtensionImporter(zipimporter):
             if spec is not None:
                 return spec
             zipextimporter = self.zipextimporter
-            extension = zipextimporter.find_extension(fullname)
-            if extension:
-                return ModuleSpec(fullname, zipextimporter, origin=extension)
+            path, is_package = zipextimporter.find_extension(fullname)
+            if path:
+                return ModuleSpec(fullname, zipextimporter, origin=path, is_package=is_package)
 
     def load_module(self, fullname):
-        mod = sys.modules.get(fullname)
-        if mod:
-            if self.verbose > 1:
-                print(f'import {fullname} # previously loaded from zipfile {self.archive}',
-                      file=sys.stderr)
-            return mod
-
-        zipextimporter = self.zipextimporter
-        extension = zipextimporter.find_extension(fullname)
-        spec = ModuleSpec(fullname, zipextimporter, origin=extension)
-        return self.create_module(spec)
-
-    def create_module(self, spec):
-        spec._set_fileattr = True
-        fullname = spec.name
-        path = spec.origin
-        initname = 'PyInit_' + fullname.rpartition('.')[2]
-
-        mod = _memimporter.import_module(fullname, path, initname,
-                                         self.get_data, spec)
-        mod.__file__ = spec.origin = f'{self.archive}\\{path}'
-        mod.__loader__ = self
+        mod = memimport(fullname=fullname, loader=self.zipextimporter)
         if self.verbose:
             print(f'import {fullname} # loaded from zipfile {self.archive}',
+                  file=sys.stderr)
+        return mod
+
+    def create_module(self, spec):
+        mod = memimport(spec=spec)
+        if self.verbose:
+            print(f'import {spec.name} # loaded from zipfile {self.archive}',
                   file=sys.stderr)
         return mod
 
@@ -163,26 +159,26 @@ class ZipExtensionImporter(zipimporter):
         pass
 
     def get_code(self, fullname):
-        path = self.find_extension(fullname)
+        path, is_package = self.find_extension(fullname)
         if path is None:
             return self.zipimporter.get_code(fullname)
 
     def get_source(self, fullname):
-        path = self.find_extension(fullname)
+        path, is_package = self.find_extension(fullname)
         if path is None:
             return self.zipimporter.get_source(fullname)
 
     def get_filename(self, fullname):
-        path = self.find_extension(fullname)
+        path, is_package = self.find_extension(fullname)
         if path is None:
             return self.zipimporter.get_filename(fullname)
         return path
 
     def is_package(self, fullname):
-        path = self.find_extension(fullname)
+        path, is_package = self.find_extension(fullname)
         if path is None:
             return self.zipimporter.is_package(fullname)
-        return False
+        return is_package
 
     def __repr__(self):
         return super().__repr__().replace('zipimporter', 'ZipExtensionImporter')
@@ -221,4 +217,8 @@ def monkey_patch():
 
 def set_verbose(i):
     '''Set verbose, the argument as same as built-in function int's.'''
-    ZipExtensionImporter.verbose = int(i)
+    i = int(i)
+    ZipExtensionImporter.verbose = i
+    if i > 1:
+        import memimport
+        memimport.set_verbose(i)

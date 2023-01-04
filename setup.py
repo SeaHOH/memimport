@@ -113,5 +113,5 @@ if __name__ == "__main__":
               ],
 
           ext_modules = [_memimporter],
-          py_modules=['zipextimporter'],
+          py_modules=['memimport', 'zipextimporter'],
           )

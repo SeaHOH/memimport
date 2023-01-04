@@ -41,15 +41,15 @@ zipextimporter.install()       # also, install to `sys.path_hooks` is still avai
 then
 
 ```python
-import ext_mod_in_zip
+import ext_mod_in_zip          # now, support __init__.pyd in packages
 
-ext_mod_in_zip                 # <module 'ext_mod_in_zip' from 'path\\to\\libs.zip\\ext_mod_in_zip.pyd'>
-ext_mod_in_zip.__file__        # 'path\\to\\libs.zip\\ext_mod_in_zip.pyd'>
+ext_mod_in_zip                 # <module 'ext_mod_in_zip' from 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
+ext_mod_in_zip.__file__        # 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
 ext_mod_in_zip.__loader__      # <ZipExtensionImporter object 'path\to\libs.zip\'>
 
 import py_mod_in_zip
 
-py_mod_in_zip                  # <module 'py_mod_in_zip' from 'path\\to\\libs.zip\\py_mod_in_zip.py'>
-py_mod_in_zip.__file__         # 'path\\to\\libs.zip\\py_mod_in_zip.py'>
+py_mod_in_zip                  # <module 'py_mod_in_zip' from 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
+py_mod_in_zip.__file__         # 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
 py_mod_in_zip.__loader__       # <zipimporter object 'path\to\libs.zip\'>
 ```
