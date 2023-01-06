@@ -35,7 +35,7 @@ Sample usage
 '''
 
 # _memimporter is a module built into the py2exe runstubs,
-# or a standalone module of memimporter.
+# or a standalone module of memimport.
 from _memimporter import import_module, get_verbose_flag
 
 from _frozen_importlib import ModuleSpec
@@ -43,6 +43,7 @@ from _frozen_importlib_external import ExtensionFileLoader
 import os
 import sys
 
+__version__ = '0.13.0.0.post2'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
@@ -90,6 +91,7 @@ def memimport(data=None, spec=None,
                         'so argument "data" or "origin" MUST be provided.'
                         )
                 origin = '<unknown>'
+        origin = origin.replace('/', '\\')
         if loader is None:
             if data is None:
                 if not os.path.isfile(origin):
@@ -115,8 +117,8 @@ def memimport(data=None, spec=None,
     initname = 'PyInit_' + fullname.rpartition('.')[2]
 
     def get_data(path):
-        if (path != MEMIMPORTPATH):
-            raise OSError(0, '', path)
+        if path != MEMIMPORTPATH:
+            return loader.get_data(path)
         if callable(data):
             return data()
         if data:

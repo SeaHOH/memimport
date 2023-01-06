@@ -21,6 +21,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     warnings.simplefilter("ignore")
-    print(wheel_name(name="memimporter",
+    print(wheel_name(name="memimport",
                      version=args.version,
                      ext_modules=[Extension("_memimporter", ["_memimporter.c"])]))

@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import os
+import re
 import glob
 
 md_head = '''\
@@ -12,6 +13,10 @@ md_head = '''\
 md_line = '| %s | %s |\n'
 sum_line = '%s  %s\n'
 
+def sort_keys(key):
+    ver = re.search('-cp3(\d{1,2})-', key).group(1)
+    return int(ver)
+
 def hash(artifact, algorithm):
     return (hashlib.new(algorithm, open(artifact, 'rb').read()).hexdigest(),
             os.path.basename(artifact))
@@ -19,7 +24,7 @@ def hash(artifact, algorithm):
 def generater(artifacts, algorithm):
     artifacts = glob.glob(os.path.join(artifacts, '**/*.whl'), recursive=True)
     artifacts = [hash(artifact, algorithm)
-                 for artifact in artifacts
+                 for artifact in sorted(artifacts, key=sort_keys, reverse=True)
                  if os.path.isfile(artifact)]
 
     with open('body.md', 'w') as bf:
