@@ -47,7 +47,7 @@ if 0:
 
 _memimporter = Extension(
     "_memimporter",
-    sources=glob.glob("source/*.[ch]"),
+    sources=glob.glob("source/*.c"),
     libraries=["user32", "shell32"],
     define_macros=macros,
     extra_compile_args=extra_compile_args,
