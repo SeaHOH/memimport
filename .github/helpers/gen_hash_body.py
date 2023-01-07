@@ -14,8 +14,8 @@ md_line = '| %s | %s |\n'
 sum_line = '%s  %s\n'
 
 def sort_keys(key):
-    ver = re.search('-cp3(\d{1,2})-', key).group(1)
-    return int(ver)
+    ver, bit = re.search(f'-cp3(\d{{1,2}})-[^\{os.sep}]+(\d\d)\.whl$', key).groups()
+    return int(ver), int(bit)
 
 def hash(artifact, algorithm):
     return (hashlib.new(algorithm, open(artifact, 'rb').read()).hexdigest(),
