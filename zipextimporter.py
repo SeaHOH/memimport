@@ -140,7 +140,7 @@ class ZipExtensionImporter(zipimporter):
             if eggs_cache is None:
                 from zipimport import __file__
                 home = os.path.dirname(os.path.dirname(__file__))
-            eggs_cache = os.path.join(home, 'Eggs-Cache')
+            os.environ['EGGS_CACHE'] = eggs_cache = os.path.join(home, 'Eggs-Cache')
         path_cache = os.path.join(os.path.abspath(eggs_cache),
                                   os.path.basename(self.archive) + '-tmp',
                                   path)
@@ -173,7 +173,7 @@ class ZipExtensionImporter(zipimporter):
             except AttributeError:
                 find_spec = self.zipimporter.find_spec
             spec = find_spec(fullname)
-            if spec is None or spec.loader is None:
+            if getattr(spec, 'loader', None) is None:
                 zipextimporter = self.zipextimporter
                 path, is_package, cached = zipextimporter.find_extension(fullname)
                 if path:
