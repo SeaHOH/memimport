@@ -9,8 +9,8 @@ see MIT-License.txt.
 ==========================================================================
 
 
-The MIT/X11 License
-===================
+MIT/X11 License
+===============
 
 Copyright (c) 2000-2023 Thomas Heller, Mark Hammond, Jimmy Retzlaff,
 Alberto Sottile, SeaHOH

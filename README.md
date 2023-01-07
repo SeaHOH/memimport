@@ -1,21 +1,31 @@
 memimport for Python 3
 ========================
 
+![operating system](https://img.shields.io/badge/OS-Windows-success)
+[![Python implementation](https://img.shields.io/badge/implementation-CPython-success)](https://www.python.org/downloads/)
+[![Python versions](https://img.shields.io/pypi/pyversions/memimport)](https://www.python.org/downloads/)
+[![licenses](https://img.shields.io/badge/license-MIT_|_MPL2-blue)](https://github.com/SeaHOH/memimport/blob/master/LICENSE.txt)
+![development status](https://img.shields.io/pypi/status/memimport)  
+[![latest tag](https://img.shields.io/github/v/tag/SeaHOH/memimport)](https://github.com/SeaHOH/memimport/tags)
+[![build status](https://img.shields.io/github/actions/workflow/status/SeaHOH/memimport/CI.yml)](https://github.com/SeaHOH/memimport/actions/workflows/CI.yml)
+[![latest version](https://img.shields.io/pypi/v/memimport)](https://pypi.org/project/memimport/)
+[![package format](https://img.shields.io/pypi/format/memimport)](https://pypi.org/project/memimport/#files)
+[![monthly downloads](https://img.shields.io/pypi/dm/memimport)](https://pypi.org/project/memimport/#files)
+
 `memimport` is a part of `py2exe`, which helps import Python extensions from
 memory, e.g. extensions from Zip files or Web.
 
 This repo via CI to build it as Python extensions, beacause the original has
 been built into the py2exe runstubs, only run with script, no REPL.
 
-Development of `memimport` is hosted here: https://github.com/SeaHOH/memimport.
-
+Development of `memimport` is hosted here: https://github.com/SeaHOH/memimport.  
 Development of `py2exe` is hosted here: https://github.com/py2exe/py2exe.
 
 
-Compatibility
--------------
+Installation
+------------
 
-Windows, CPython >= 3.6
+    pip install memimport
 
 
 Usage
