@@ -34,16 +34,16 @@ Sample usage
 
 '''
 
+import os
+import sys
+from importlib.machinery import ExtensionFileLoader, ModuleSpec
+
 # _memimporter is a module built into the py2exe runstubs,
 # or a standalone module of memimport.
 from _memimporter import import_module, get_verbose_flag
 
-from _frozen_importlib import ModuleSpec
-from _frozen_importlib_external import ExtensionFileLoader
-import os
-import sys
 
-__version__ = '0.13.0.0.post2'
+__version__ = '0.13.0.0.post3'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
@@ -126,12 +126,18 @@ def memimport(data=None, spec=None,
         return loader.get_data(origin)
 
     mod = import_module(fullname, MEMIMPORTPATH, initname, get_data, spec)
+    # init attributes
+    mod.__spec__ = spec
     mod.__file__ = origin
     mod.__loader__ = loader
+    mod.__package__ = spec.parent
+    if sub_search is not None:
+        mod.__path__ = sub_search
     if verbose > 1:
         print(f'memimport {fullname} # loaded from {origin}',
               file=sys.stderr)
     return mod
+
 
 verbose = get_verbose_flag()
 

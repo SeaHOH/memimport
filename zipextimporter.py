@@ -10,8 +10,8 @@ zipextimporter.py contains the ZipExtImporter class which allows to
 load Python binary extension modules contained in a zip.archive,
 without unpacking them to the file system.
 
-Call the zipextimporter.monkey_patch() function to monkey patch the zipimporter,
-or call the zipextimporter.install() function to install the import hook,
+Call the zipextimporter.install(hook=False) to monkey patch the zipimporter,
+or call the zipextimporter.install(hook=True) to install the import hook,
 add a zip-file containing .pyd or .dll extension modules to sys.path,
 and import them.
 
@@ -26,7 +26,7 @@ You have to prepare a zip-archive 'lib.zip' containing
 your Python's _socket.pyd for this example to work.
 
 >>> import zipextimporter
->>> zipextimporter.monkey_patch()
+>>> zipextimporter.install()
 >>> import sys
 >>> sys.path.insert(0, "lib.zip")
 >>> import _socket
@@ -43,23 +43,28 @@ True
 >>>
 
 """
+
 import sys
-from _frozen_importlib import ModuleSpec
-from _frozen_importlib_external import ExtensionFileLoader
+import warnings
+from importlib.machinery import ExtensionFileLoader, ModuleSpec
 from importlib.util import spec_from_file_location
-from zipimport import zipimporter, ZipImportError
+from zipimport import zipimporter
 
 from memimport import memimport, get_verbose_flag
 
 
 __all__ = [
-    'monkey_patch', 'install', 'set_verbose',
+    'install', 'set_verbose',
     'set_exclude_modules', 'set_ver_binding_modules',
     'list_exclude_modules', 'list_ver_binding_modules'
 ]
 
 
-pyver = '%d%d' % sys.version_info[:2]
+_zip_extension_cache = {}
+
+# override built-in to force display warnings
+class ImportWarning(Warning): ...
+
 
 class ZipExtensionImporter(zipimporter):
     '''Import Python extensions from Zip files, just likes built-in zipimporter.
@@ -68,25 +73,27 @@ class ZipExtensionImporter(zipimporter):
     from importlib.machinery import EXTENSION_SUFFIXES as suffixes
     suffixes = suffixes + ['.dll', '']
     suffixes_pkg = [(f'\\__init__{suffix}', True) for suffix in suffixes]
-    suffixes_pyver = [(f'{pyver}{suffix}', False) for suffix in suffixes
-                      if pyver not in suffix]
+    pyver = '%d%d' % sys.version_info[:2]
+    suffixes_pyver = f'{pyver}.dll', f'{pyver}.pyd', pyver
+    suffixes_pyver = [(suffix, False) for suffix in suffixes_pyver]
     suffixes = [(suffix, False) for suffix in suffixes]
-    suffixes += suffixes_pkg
-    suffixes_pyver += suffixes
+    suffixes_pyver = tuple(suffixes_pyver + suffixes)
+    suffixes = tuple(suffixes + suffixes_pkg)
     # add pyver suffix, only match the last name
     names_pyver = {'pywintypes', 'pythoncom'}
     # use cache file instead of import from memory, only match the full name
     names_cached = {'greenlet._greenlet'}
     verbose = get_verbose_flag()
-    del suffixes_pkg
+    del suffixes_pkg, pyver
 
     def __init__(self, path_or_importer):
         if isinstance(path_or_importer, zipimporter):
             self.zipimporter = path_or_importer
         else:
             self.zipimporter = zipimporter(path_or_importer)
-            if hasattr(zipimporter, '_files'):
+            if hasattr(zipimporter, '_files'):  # py <= 37, frozen builtin
                 super().__init__(path_or_importer)
+        self._zip_extension_cache = _zip_extension_cache.setdefault(self.archive, {})
 
     def __getattr__(self, name):
         return getattr(self.zipimporter, name)
@@ -101,8 +108,8 @@ class ZipExtensionImporter(zipimporter):
             self._zipextimporter = zipextimporter = ZipExtensionImporter(self)
         return zipextimporter
 
-    def find_extension(self, fullname, cache={}):
-        path_info = cache.get(fullname)
+    def find_extension(self, fullname):
+        path_info = self._zip_extension_cache.get(fullname)
         if path_info:
             return path_info
         name = fullname.rpartition('.')[2]
@@ -128,7 +135,7 @@ class ZipExtensionImporter(zipimporter):
                     path_info = self.zipextimporter.get_cached_path(path), is_package, True
                 else:
                     path_info = f'{self.archive}\\{path}', is_package, False
-                cache[fullname] = path_info
+                self._zip_extension_cache[fullname] = path_info
                 return path_info
         return None, None, None
 
@@ -138,7 +145,10 @@ class ZipExtensionImporter(zipimporter):
         if eggs_cache is None:
             home = os.getenv('PYTHONHOME')
             if eggs_cache is None:
-                from zipimport import __file__
+                try:
+                    from zipimport import __file__
+                except ImportError:
+                    from warnings import __file__
                 home = os.path.dirname(os.path.dirname(__file__))
             os.environ['EGGS_CACHE'] = eggs_cache = os.path.join(home, 'Eggs-Cache')
         path_cache = os.path.join(os.path.abspath(eggs_cache),
@@ -180,16 +190,16 @@ class ZipExtensionImporter(zipimporter):
                     if cached:
                         return spec_from_file_location(fullname, path)
                     else:
-                        return ModuleSpec(fullname, zipextimporter,
-                                          origin=path, is_package=is_package)
+                        spec = ModuleSpec(fullname, zipextimporter, origin=path)
+                        if is_package:
+                            spec.submodule_search_locations = [path.rpartition('\\')[0]]
             return spec
 
-    def load_module(self, fullname):
-        mod = memimport(fullname=fullname, loader=self.zipextimporter)
-        if self.verbose:
-            print(f'import {fullname} # loaded from zipfile {self.archive}',
-                  file=sys.stderr)
-        return mod
+    if hasattr(zipimporter, 'load_module'):
+        def load_module(self, fullname):
+            # will never enter here, raise error for developers
+            raise NotImplementedError('load_module() is not implemented, '
+                                      'use create_module() instead.')
 
     def create_module(self, spec):
         mod = memimport(spec=spec)
@@ -199,8 +209,31 @@ class ZipExtensionImporter(zipimporter):
         return mod
 
     def exec_module(self, module):
-        pass
+        if not hasattr(module, '__memmodule__'):  # first load
+            module.__memmodule__ = 'self'
+            return
+        # reload
+        warnings.warn('importlib.reload() extensions by memextimporter '
+                      'in production environment is not recommended.',
+                      category=ImportWarning, stacklevel=3)
+        fullname = module.__name__
+        module_ns = module.__dict__
+        try:
+            # does not work compatibly with all extensions, but all implicit
+            # there needs really reload to first loaded modules ( in C )
+            mod = memimport(spec=module.__spec__)
+            module_ns.update(mod.__dict__)
+            module.__memmodule__ = mod
+            exec('def __getattr__(name):\n'
+                 '    return getattr(__memmodule__, name)',
+                 module_ns)
+            if self.verbose:
+                print(f'import {fullname} # loaded from zipfile {self.archive}',
+                      file=sys.stderr)
+        finally:
+            sys.modules[fullname] = module  # restore module
 
+    ## ====================== improves compatibility ======================
     def get_code(self, fullname):
         path, is_package, cached = self.find_extension(fullname)
         if path is None:
@@ -222,14 +255,41 @@ class ZipExtensionImporter(zipimporter):
         if path is None:
             return self.zipimporter.is_package(fullname)
         return is_package
+    ## ====================================================================
+
+    if hasattr(zipimporter, 'invalidate_caches'):
+        def invalidate_caches(self):
+            try:
+                invalidate_caches = self._invalidate_caches
+            except AttributeError:
+                invalidate_caches = self.zipimporter.invalidate_caches
+            try:
+                invalidate_caches()
+            except AttributeError:
+                pass
+            finally:
+                self.zipextimporter._zip_extension_cache.clear()
 
     def __repr__(self):
         return super().__repr__().replace('zipimporter', 'ZipExtensionImporter')
 
 
-def install():
+def install(hook=hasattr(zipimporter, '_files')):
+    '''Install the zipextimporter.'''
+    if hook:
+        _install_hook()
+    else:
+        _monkey_patch()
+
+
+def _install_hook():
     '''Install the zipextimporter to `sys.path_hooks`.'''
     if ZipExtensionImporter in sys.path_hooks:
+        return
+    if hasattr(zipimporter, 'zipextimporter'):
+        warnings.warn('Did nothing. Please manually uninstall before call '
+                      'install() multi-times with different argument values.',
+                      category=RuntimeWarning, stacklevel=3)
         return
     try:
         i = sys.path_hooks.index(zipimporter)
@@ -243,11 +303,16 @@ def install():
     ## importlib.invalidate_caches()
 
 
-def monkey_patch():
+def _monkey_patch():
     '''Monkey patch the zipimporter, best compatibility.'''
-    if hasattr(zipimporter, '_files'):
-        return install()
+    if hasattr(zipimporter, '_files'):  # py <= 37, frozen builtin
+        return _install_hook()
     if hasattr(zipimporter, 'zipextimporter'):
+        return
+    if ZipExtensionImporter in sys.path_hooks:
+        warnings.warn('Did nothing. Please manually uninstall before call '
+                      'install() multi-times with different argument values.',
+                      category=RuntimeWarning, stacklevel=3)
         return
     zipimporter.zipextimporter = ZipExtensionImporter.zipextimporter
     if hasattr(zipimporter, 'find_loader'):
@@ -256,6 +321,9 @@ def monkey_patch():
     if hasattr(zipimporter, 'find_spec'):
         zipimporter._find_spec = zipimporter.find_spec
         zipimporter.find_spec = ZipExtensionImporter.find_spec
+    if hasattr(zipimporter, 'invalidate_caches'):
+        zipimporter._invalidate_caches = zipimporter.invalidate_caches
+        zipimporter.invalidate_caches = ZipExtensionImporter.invalidate_caches
 
 
 def set_exclude_modules(modules):
@@ -276,14 +344,14 @@ def set_ver_binding_modules(modules):
 
 def list_exclude_modules():
     '''Return a list of modules which will not be import from memory.
-    Also see `set_exclude_modules`
+    Also see `set_exclude_modules`.
     '''
     return list(ZipExtensionImporter.names_cached)
 
 
 def list_ver_binding_modules():
     '''Return a list of modules which will be add a version suffix.
-    Also see `set_ver_binding_modules`
+    Also see `set_ver_binding_modules`.
     '''
     return list(ZipExtensionImporter.names_pyver)
 

@@ -14,7 +14,7 @@ def fix_up(file):
     )
     if context_fix_up != context:
         print('Version tag has been changed, now updating...')
-        open(file, 'w').write(context_fix_up)
+        open(file, 'w', newline='\n').write(context_fix_up)
         print('Version tag has been updated.')
 
 if __name__ == '__main__':

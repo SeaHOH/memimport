@@ -41,29 +41,36 @@ sys.path.insert(0, 'path/to/libs.zip')
 then
 
 ```python
-zipextimporter.monkey_patch()  # recommend, only monkey patch `zipimport.zipimporter`
+zipextimporter.install()            # default, prefer `hook=False`, `hook=True` as fallback
 ```
 
 or
 
 ```python
-zipextimporter.install()       # also, install to `sys.path_hooks` is still available
+zipextimporter.install(hook=False)  # better compatibility, monkey patch `zipimport.zipimporter`
+                                    # equal to empty argument, `hook=True` as fallback
+```
+
+or
+
+```python
+zipextimporter.install(hook=True)   # not recommend, install to `sys.path_hooks`
 ```
 
 then
 
 ```python
-import ext_mod_in_zip          # now, support __init__.pyd in packages
+import ext_mod_in_zip      # now, support __init__.pyd in packages
 
-ext_mod_in_zip                 # <module 'ext_mod_in_zip' from 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
-ext_mod_in_zip.__file__        # 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
-ext_mod_in_zip.__loader__      # <ZipExtensionImporter object 'path\to\libs.zip\'>
+ext_mod_in_zip             # <module 'ext_mod_in_zip' from 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
+ext_mod_in_zip.__file__    # 'path\\to\\libs.zip\\ext_mod_in_zip\\__init__.pyd'>
+ext_mod_in_zip.__loader__  # <ZipExtensionImporter object 'path\to\libs.zip\'>
 
 import py_mod_in_zip
 
-py_mod_in_zip                  # <module 'py_mod_in_zip' from 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
-py_mod_in_zip.__file__         # 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
-py_mod_in_zip.__loader__       # <zipimporter object 'path\to\libs.zip\'>
+py_mod_in_zip              # <module 'py_mod_in_zip' from 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
+py_mod_in_zip.__file__     # 'path\\to\\libs.zip\\py_mod_in_zip\\__init__.py'>
+py_mod_in_zip.__loader__   # <zipimporter object 'path\to\libs.zip\'>
 ```
 
 More usage see source or use help function.

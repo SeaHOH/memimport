@@ -10,19 +10,24 @@ def prepare():
 
 def test_zipextimporter():
     import importlib
+    import zipimport
     import zipextimporter
-    zipextimporter.monkey_patch()
+    zipextimporter.install()
     zipextimporter.set_verbose(2)
     sys.path.insert(0, 'testpkg.zip')
 
     import testpkg._memimporter
     print(testpkg._memimporter.__loader__)
+    import_module_old = testpkg._memimporter.import_module
     assert isinstance(testpkg._memimporter.__loader__, zipextimporter.ZipExtensionImporter)
+    assert testpkg._memimporter is sys.modules['testpkg._memimporter']
+    importlib.reload(testpkg._memimporter)
+    assert import_module_old is not testpkg._memimporter.import_module
 
     from testpkg._memimporter import submod
     assert submod.loaded == True
     print(submod.__loader__)
-    assert isinstance(submod.__loader__, zipextimporter.zipimporter)
+    assert isinstance(submod.__loader__, zipimport.zipimporter)
 
     assert testpkg._memimporter.submod is importlib.reload(testpkg._memimporter).submod
 
