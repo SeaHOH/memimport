@@ -46,14 +46,8 @@ jobs:
           python -m pip install -U pip setuptools wheel
 
       - name: Build
-        if: ${{ matrix.cfg.preview == 0 }}
         run: |
           python setup.py bdist_wheel
-
-      - name: Build preview
-        if: ${{ matrix.cfg.preview > 0 }}
-        run: |
-          python setup.py bdist_wheel || echo ignore
 
       - name: Prepare for deployment
         run: |
@@ -66,7 +60,6 @@ jobs:
           echo "WHEELNAME=$wheelname" >> $env:GITHUB_ENV
 
       - name: Deploy
-        if: ${{ matrix.cfg.preview == 0 || matrix.cfg.preview > 1 }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.WHEELNAME }}
@@ -74,14 +67,12 @@ jobs:
             dist/${{ env.WHEELNAME }}
 
       - name: Install
-        if: ${{ matrix.cfg.preview == 0 || matrix.cfg.preview > 1 }}
         run: |
           dir
           pip install dist/${{ env.WHEELNAME }}
           python -c "import zipextimporter"
 
       - name: Test
-        if: ${{ matrix.cfg.preview == 0 || matrix.cfg.preview > 1 }}
         run: |
           python test.py prepare
           python test.py test
