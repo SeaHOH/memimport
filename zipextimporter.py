@@ -91,7 +91,7 @@ class ZipExtensionImporter(zipimporter):
             self.zipimporter = path_or_importer
         else:
             self.zipimporter = zipimporter(path_or_importer)
-            if hasattr(zipimporter, '_files'):  # py <= 37, frozen builtin
+            if hasattr(zipimporter, '_files'):  # py <= 37, built-in
                 super().__init__(path_or_importer)
         self._zip_extension_cache = _zip_extension_cache.setdefault(self.archive, {})
 
@@ -209,29 +209,8 @@ class ZipExtensionImporter(zipimporter):
         return mod
 
     def exec_module(self, module):
-        if not hasattr(module, '__memmodule__'):  # first load
-            module.__memmodule__ = 'self'
-            return
-        # reload
-        warnings.warn('importlib.reload() extensions by memextimporter '
-                      'in production environment is not recommended.',
-                      category=ImportWarning, stacklevel=3)
-        fullname = module.__name__
-        module_ns = module.__dict__
-        try:
-            # does not work compatibly with all extensions, but all implicit
-            # there needs really reload to first loaded modules ( in C )
-            mod = memimport(spec=module.__spec__)
-            module_ns.update(mod.__dict__)
-            module.__memmodule__ = mod
-            exec('def __getattr__(name):\n'
-                 '    return getattr(__memmodule__, name)',
-                 module_ns)
-            if self.verbose:
-                print(f'import {fullname} # loaded from zipfile {self.archive}',
-                      file=sys.stderr)
-        finally:
-            sys.modules[fullname] = module  # restore module
+        # all has been done in create_module(), also skip importlib.reload()
+        pass
 
     ## ====================== improves compatibility ======================
     def get_code(self, fullname):
@@ -305,7 +284,7 @@ def _install_hook():
 
 def _monkey_patch():
     '''Monkey patch the zipimporter, best compatibility.'''
-    if hasattr(zipimporter, '_files'):  # py <= 37, frozen builtin
+    if hasattr(zipimporter, '_files'):  # py <= 37, built-in
         return _install_hook()
     if hasattr(zipimporter, 'zipextimporter'):
         return

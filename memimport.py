@@ -19,7 +19,7 @@ Sample usage
 
 >>> from memimport import memimport
 >>> data = some_gen(*any_args)  # read from Disk or Web
->>> mem_mod = memimport(data=get_data, fullname='mem_mod')
+>>> mem_mod = memimport(data=data, fullname='mem_mod')
 >>> print(mem_mod)
 <module 'mem_mod' from '<unknown>'>
 >>> mem_mod.__file__
@@ -43,7 +43,7 @@ from importlib.machinery import ExtensionFileLoader, ModuleSpec
 from _memimporter import import_module, get_verbose_flag
 
 
-__version__ = '0.13.0.0.post3'
+__version__ = '0.13.0.0.post4'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
@@ -53,6 +53,11 @@ __all__ = [
 
 class MemExtensionFileLoader(ExtensionFileLoader):
 
+    def __init__(self, name, path, data):
+        self.name = name
+        self.path = path
+        self.data = data
+
     def create_module(self, spec):
         pass
 
@@ -61,6 +66,19 @@ class MemExtensionFileLoader(ExtensionFileLoader):
 
     def load_module(self, fullname):
         pass
+
+    def get_data(self, path):
+        try:
+            if callable(self.data):
+                return self.data(path)
+        except TypeError as e:
+            if 'takes 0 positional arguments' not in str(e):
+                raise
+        if path in (self.name, self.path):
+            if callable(self.data):
+                return self.data()
+            return self.data
+        raise OSError(0, '', path)
 
 
 def memimport_from_data(fullname, data, is_package=None):
@@ -99,7 +117,7 @@ def memimport(data=None, spec=None,
                                      'argument "origin" MUST be a locale file.')
                 loader = ExtensionFileLoader(fullname, origin)
             else:
-                loader = MemExtensionFileLoader(fullname, origin)
+                loader = MemExtensionFileLoader(fullname, origin, data)
         if is_package is None:
             is_package = loader.is_package(fullname)
         spec = ModuleSpec(fullname, loader, origin=origin, is_package=is_package)
@@ -108,24 +126,23 @@ def memimport(data=None, spec=None,
 
     loader = spec.loader
     origin = spec.origin
-    sub_search = spec.submodule_search_locations
+    path = origin == '<unknown>' and fullname or origin
     spec._set_fileattr = origin != '<unknown>'  # has_location, use for reload
+    sub_search = spec.submodule_search_locations
     if sub_search is not None and not sub_search:
         sub_search.append(origin.rpartition('\\')[0])
 
-    MEMIMPORTPATH = 'MEMIMPORT|' + fullname
-    initname = 'PyInit_' + fullname.rpartition('.')[2]
+    # PEP 489 multi-phase initialization / Export Hook Name
+    initname = fullname.rpartition('.')[2]
+    try:
+        initname.encode('ascii')
+    except UnicodeEncodeError:
+        initname = 'PyInitU_' + initname.encode('punycode') \
+                                        .decode('ascii').replace('-', '_')
+    else:
+        initname = 'PyInit_' + initname
 
-    def get_data(path):
-        if path != MEMIMPORTPATH:
-            return loader.get_data(path)
-        if callable(data):
-            return data()
-        if data:
-            return data
-        return loader.get_data(origin)
-
-    mod = import_module(fullname, MEMIMPORTPATH, initname, get_data, spec)
+    mod = import_module(fullname, path, initname, loader.get_data, spec)
     # init attributes
     mod.__spec__ = spec
     mod.__file__ = origin
