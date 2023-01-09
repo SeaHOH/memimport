@@ -21,7 +21,14 @@ def test_zipextimporter():
     import_module_old = testpkg._memimporter.import_module
     assert isinstance(testpkg._memimporter.__loader__, zipextimporter.ZipExtensionImporter)
     assert testpkg._memimporter is sys.modules['testpkg._memimporter']
+
+    # same as ExtensionFileLoader
     importlib.reload(testpkg._memimporter)
+    assert import_module_old is testpkg._memimporter.import_module
+
+    # different to ExtensionFileLoader
+    sys.modules.pop('testpkg._memimporter')
+    import testpkg._memimporter
     assert import_module_old is not testpkg._memimporter.import_module
 
     from testpkg._memimporter import submod
