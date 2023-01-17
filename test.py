@@ -63,7 +63,7 @@ def test_memimport():
     except Exception as e:
         err = e
     finally:
-        print(err)
+        print('excepted error:', repr(err))
         assert err
 
 

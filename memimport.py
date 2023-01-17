@@ -36,14 +36,18 @@ Sample usage
 
 import os
 import sys
-from importlib.machinery import ExtensionFileLoader, ModuleSpec
+try:
+    from _frozen_importlib import ModuleSpec
+    from _frozen_importlib_external import ExtensionFileLoader
+except ImportError:
+    from importlib.machinery import ModuleSpec, ExtensionFileLoader
 
 # _memimporter is a module built into the py2exe runstubs,
 # or a standalone module of memimport.
 from _memimporter import import_module, get_verbose_flag
 
 
-__version__ = '0.13.0.0.post4'
+__version__ = '0.13.0.0.post5'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
@@ -132,16 +136,7 @@ def memimport(data=None, spec=None,
     if sub_search is not None and not sub_search:
         sub_search.append(origin.rpartition('\\')[0])
 
-    # PEP 489 multi-phase initialization / Export Hook Name
-    initname = fullname.rpartition('.')[2]
-    try:
-        initname.encode('ascii')
-    except UnicodeEncodeError:
-        initname = 'PyInitU_' + initname.encode('punycode') \
-                                        .decode('ascii').replace('-', '_')
-    else:
-        initname = 'PyInit_' + initname
-
+    initname = export_hook_name(fullname)
     mod = import_module(fullname, path, initname, loader.get_data, spec)
     # init attributes
     mod.__spec__ = spec
@@ -154,6 +149,18 @@ def memimport(data=None, spec=None,
         print(f'memimport {fullname} # loaded from {origin}',
               file=sys.stderr)
     return mod
+
+
+def export_hook_name(fullname):
+    # PEP 489 multi-phase initialization / Export Hook Name
+    name = fullname.rpartition('.')[2]
+    try:
+        name.encode('ascii')
+    except UnicodeEncodeError:
+        return 'PyInitU_' + name.encode('punycode') \
+                                .decode('ascii').replace('-', '_')
+    else:
+        return 'PyInit_' + name
 
 
 verbose = get_verbose_flag()

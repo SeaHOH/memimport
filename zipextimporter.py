@@ -45,12 +45,20 @@ True
 """
 
 import sys
-import warnings
-from importlib.machinery import ExtensionFileLoader, ModuleSpec
-from importlib.util import spec_from_file_location
+import _imp
 from zipimport import zipimporter
+try:
+    import _warnings as warnings
+except ImportError:
+    import warnings
+try:
+    from _frozen_importlib import ModuleSpec, spec_from_loader
+    from _frozen_importlib_external import ExtensionFileLoader, spec_from_file_location
+except ImportError:
+    from importlib.machinery import ModuleSpec, ExtensionFileLoader
+    from importlib.util import spec_from_loader, spec_from_file_location
 
-from memimport import memimport, get_verbose_flag
+from memimport import memimport, export_hook_name, get_verbose_flag
 
 
 __all__ = [
@@ -60,31 +68,38 @@ __all__ = [
 ]
 
 
-_zip_extension_cache = {}
-
-# override built-in to force display warnings
-class ImportWarning(Warning): ...
+class _ModuleInfo:
+    __slots__ = ('path', 'is_ext', 'is_package', 'cached')
+    def __init__(self, *args):
+        self.path, self.is_ext, self.is_package, self.cached = args
 
 
 class ZipExtensionImporter(zipimporter):
     '''Import Python extensions from Zip files, just likes built-in zipimporter.
     Supported file extensions: "pyd", "dll", " "(none).
     '''
-    from importlib.machinery import EXTENSION_SUFFIXES as suffixes
-    suffixes = suffixes + ['.dll', '']
-    suffixes_pkg = [(f'\\__init__{suffix}', True) for suffix in suffixes]
+    suffixes = _imp.extension_suffixes() + ['.dll', '']
     pyver = '%d%d' % sys.version_info[:2]
     suffixes_pyver = f'{pyver}.dll', f'{pyver}.pyd', pyver
-    suffixes_pyver = [(suffix, False) for suffix in suffixes_pyver]
-    suffixes = [(suffix, False) for suffix in suffixes]
-    suffixes_pyver = tuple(suffixes_pyver + suffixes)
-    suffixes = tuple(suffixes + suffixes_pkg)
+    _searchorder = (
+        *[(f'\\__init__{suffix}', True, True) for suffix in suffixes],
+        ('\\__init__.pyc', False, True),
+        ('\\__init__.py', False, True),
+        *[(suffix, True, False) for suffix in suffixes],
+        ('.pyc', False, False),
+        ('.py', False, False),
+    )
+    _searchorder_pyver = (
+        *_searchorder[:-2],
+        *[(suffix, True, False) for suffix in suffixes_pyver],
+        *_searchorder[-2:],
+    )
     # add pyver suffix, only match the last name
     names_pyver = {'pywintypes', 'pythoncom'}
     # use cache file instead of import from memory, only match the full name
     names_cached = {'greenlet._greenlet'}
     verbose = get_verbose_flag()
-    del suffixes_pkg, pyver
+    del suffixes, suffixes_pyver, pyver
 
     def __init__(self, path_or_importer):
         if isinstance(path_or_importer, zipimporter):
@@ -93,7 +108,6 @@ class ZipExtensionImporter(zipimporter):
             self.zipimporter = zipimporter(path_or_importer)
             if hasattr(zipimporter, '_files'):  # py <= 37, built-in
                 super().__init__(path_or_importer)
-        self._zip_extension_cache = _zip_extension_cache.setdefault(self.archive, {})
 
     def __getattr__(self, name):
         return getattr(self.zipimporter, name)
@@ -108,47 +122,44 @@ class ZipExtensionImporter(zipimporter):
             self._zipextimporter = zipextimporter = ZipExtensionImporter(self)
         return zipextimporter
 
-    def find_extension(self, fullname):
-        path_info = self._zip_extension_cache.get(fullname)
-        if path_info:
-            return path_info
+    def _get_module_info(self, fullname, _raise=False):
         name = fullname.rpartition('.')[2]
-        initname = f'PyInit_{name}'.encode()
+        initname = export_hook_name(name).encode()
         if name in self.names_pyver:
-            suffixes = self.suffixes_pyver
+            searchorder = self._searchorder_pyver
         else:
-            suffixes = self.suffixes
+            searchorder = self._searchorder
         _path = self.prefix + name
-        for suffix, is_package in suffixes:
+        for suffix, is_ext, is_package in searchorder:
             path = _path + suffix
-            if path in self._files:
-                if not suffix.endswith('.pyd') and initname not in self.get_data(path):
-                    if self.verbose > 1:
-                        print(f'# found {path} in zipfile {self.archive}, '
-                               'but it is not a Python extension',
-                              file=sys.stderr)
-                    continue
+            if path not in self._files:
+                continue
+            if not is_ext:
+                return _ModuleInfo(path, is_ext, is_package, None)
+            if not suffix.endswith('.pyd') and initname not in self.get_data(path):
                 if self.verbose > 1:
-                    print(f'# found {path} in zipfile {self.archive}',
+                    print(f'# found {path} in zipfile {self.archive}, '
+                           'but it is not a Python extension',
                           file=sys.stderr)
-                if fullname in self.names_cached:
-                    path_info = self.zipextimporter.get_cached_path(path), is_package, True
-                else:
-                    path_info = f'{self.archive}\\{path}', is_package, False
-                self._zip_extension_cache[fullname] = path_info
-                return path_info
-        return None, None, None
+                continue
+            if self.verbose > 1:
+                print(f'# found {path} in zipfile {self.archive}',
+                      file=sys.stderr)
+            if fullname in self.names_cached:
+                mi = self._get_cached_path(path), is_ext, is_package, True
+            else:
+                mi = f'{self.archive}\\{path}', is_ext, is_package, False
+            return _ModuleInfo(*mi)
+        if _raise:
+            raise ZipImportError(f"can't find module {fullname!r}", name=fullname)
 
-    def get_cached_path(self, path):
+    def _get_cached_path(self, path):
         import os
         eggs_cache = os.getenv('EGGS_CACHE')
         if eggs_cache is None:
             home = os.getenv('PYTHONHOME')
             if eggs_cache is None:
-                try:
-                    from zipimport import __file__
-                except ImportError:
-                    from warnings import __file__
+                from zipimport import __file__
                 home = os.path.dirname(os.path.dirname(__file__))
             os.environ['EGGS_CACHE'] = eggs_cache = os.path.join(home, 'Eggs-Cache')
         path_cache = os.path.join(os.path.abspath(eggs_cache),
@@ -161,38 +172,46 @@ class ZipExtensionImporter(zipimporter):
 
     if hasattr(zipimporter, 'find_loader'):
         def find_loader(self, fullname, path=None):
-            try:
-                find_loader = self._find_loader
-            except AttributeError:
-                find_loader = self.zipimporter.find_loader
-            loader, portion = find_loader(fullname)
-            if loader is None:
-                zipextimporter = self.zipextimporter
-                path, is_package, cached = zipextimporter.find_extension(fullname)
-                if path:
-                    if cached:
-                        return ExtensionFileLoader(fullname, path), []
-                    else:
-                        return zipextimporter, []
-            return loader, portion
+            mi = self.zipextimporter._get_module_info(fullname)
+            if mi is None:
+                path = self.prefix + fullname.rpartition('.')[2]
+                if f'{path}\\' in self._files:
+                    return None, [f'{self.archive}\\{path}']
+                return None, []
+            if mi.is_ext:
+                if mi.cached:
+                    loader = ExtensionFileLoader(fullname, mi.path)
+                else:
+                    loader = self.zipextimporter
+            else:
+                try:
+                    loader = self.zipimporter
+                except AttributeError:
+                    loader = self
+            return loader, []
 
     if hasattr(zipimporter, 'find_spec'):
         def find_spec(self, fullname, target=None):
-            try:
-                find_spec = self._find_spec
-            except AttributeError:
-                find_spec = self.zipimporter.find_spec
-            spec = find_spec(fullname)
-            if getattr(spec, 'loader', None) is None:
-                zipextimporter = self.zipextimporter
-                path, is_package, cached = zipextimporter.find_extension(fullname)
-                if path:
-                    if cached:
-                        return spec_from_file_location(fullname, path)
-                    else:
-                        spec = ModuleSpec(fullname, zipextimporter, origin=path)
-                        if is_package:
-                            spec.submodule_search_locations = [path.rpartition('\\')[0]]
+            mi = self.zipextimporter._get_module_info(fullname)
+            if mi is None:
+                path = self.prefix + fullname.rpartition('.')[2]
+                if f'{path}\\' in self._files:
+                    spec = ModuleSpec(fullname, None)
+                    spec.submodule_search_locations = [f'{self.archive}\\{path}']
+                    return spec
+                return None
+            if mi.is_ext:
+                if mi.cached:
+                    return spec_from_file_location(fullname, mi.path)
+                spec = ModuleSpec(fullname, self.zipextimporter, origin=mi.path)
+                if mi.is_package:
+                    spec.submodule_search_locations = [mi.path.rpartition('\\')[0]]
+            else:
+                try:
+                    loader = self.zipimporter
+                except AttributeError:
+                    loader = self
+                spec = spec_from_loader(fullname, loader, is_package=mi.is_package)
             return spec
 
     if hasattr(zipimporter, 'load_module'):
@@ -214,40 +233,25 @@ class ZipExtensionImporter(zipimporter):
 
     ## ====================== improves compatibility ======================
     def get_code(self, fullname):
-        path, is_package, cached = self.find_extension(fullname)
-        if path is None:
+        mi = self._get_module_info(fullname, _raise=True)
+        if not mi.is_ext:
             return self.zipimporter.get_code(fullname)
 
     def get_source(self, fullname):
-        path, is_package, cached = self.find_extension(fullname)
-        if path is None:
+        mi = self._get_module_info(fullname, _raise=True)
+        if not mi.is_ext:
             return self.zipimporter.get_source(fullname)
 
     def get_filename(self, fullname):
-        path, is_package, cached = self.find_extension(fullname)
-        if path is None:
+        mi = self._get_module_info(fullname, _raise=True)
+        if not mi.is_ext:
             return self.zipimporter.get_filename(fullname)
-        return path
+        return mi.path
 
     def is_package(self, fullname):
-        path, is_package, cached = self.find_extension(fullname)
-        if path is None:
-            return self.zipimporter.is_package(fullname)
-        return is_package
+        mi = self._get_module_info(fullname, _raise=True)
+        return mi.is_package
     ## ====================================================================
-
-    if hasattr(zipimporter, 'invalidate_caches'):
-        def invalidate_caches(self):
-            try:
-                invalidate_caches = self._invalidate_caches
-            except AttributeError:
-                invalidate_caches = self.zipimporter.invalidate_caches
-            try:
-                invalidate_caches()
-            except AttributeError:
-                pass
-            finally:
-                self.zipextimporter._zip_extension_cache.clear()
 
     def __repr__(self):
         return super().__repr__().replace('zipimporter', 'ZipExtensionImporter')
@@ -300,9 +304,6 @@ def _monkey_patch():
     if hasattr(zipimporter, 'find_spec'):
         zipimporter._find_spec = zipimporter.find_spec
         zipimporter.find_spec = ZipExtensionImporter.find_spec
-    if hasattr(zipimporter, 'invalidate_caches'):
-        zipimporter._invalidate_caches = zipimporter.invalidate_caches
-        zipimporter.invalidate_caches = ZipExtensionImporter.invalidate_caches
 
 
 def set_exclude_modules(modules):
@@ -310,7 +311,7 @@ def set_exclude_modules(modules):
     Notice:
         Please ensure input fullname of modules.
     '''
-    _set_importer(module, ZipExtensionImporter.names_cached.add)
+    _set_importer(modules, ZipExtensionImporter.names_cached.add)
 
 
 def set_ver_binding_modules(modules):
@@ -336,7 +337,7 @@ def list_ver_binding_modules():
 
 
 def _set_ver_binding_modules(modules, f=lambda m:str.rpartition(m,'.')[2]):
-    _set_importer(module, ZipExtensionImporter.names_pyver.add, f)
+    _set_importer(modules, ZipExtensionImporter.names_pyver.add, f)
 
 
 def _set_importer(modules, attrfunc, argsfunc=None):
