@@ -44,14 +44,14 @@ except ImportError:
 
 # _memimporter is a module built into the py2exe runstubs,
 # or a standalone module of memimport.
-from _memimporter import import_module, get_verbose_flag
+from _memimporter import import_module
 
 
-__version__ = '0.13.0.0.post5'
+__version__ = '0.13.0.0.post6'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
-    'memimport', 'get_verbose_flag', 'set_verbose'
+    'memimport', 'set_verbose'
 ]
 
 
@@ -145,14 +145,12 @@ def memimport(data=None, spec=None,
     mod.__package__ = spec.parent
     if sub_search is not None:
         mod.__path__ = sub_search
-    if verbose > 1:
-        print(f'memimport {fullname} # loaded from {origin}',
-              file=sys.stderr)
+    _verbose_msg(f'import {fullname} # loaded from {origin}')
     return mod
 
 
+# PEP 489 multi-phase initialization / Export Hook Name
 def export_hook_name(fullname):
-    # PEP 489 multi-phase initialization / Export Hook Name
     name = fullname.rpartition('.')[2]
     try:
         name.encode('ascii')
@@ -163,7 +161,11 @@ def export_hook_name(fullname):
         return 'PyInit_' + name
 
 
-verbose = get_verbose_flag()
+verbose = sys.flags.verbose
+
+def _verbose_msg(msg, verbosity=1):
+    if max(verbose, sys.flags.verbose) >= verbosity:
+        print(msg, file=sys.stderr)
 
 def set_verbose(i):
     '''Set verbose, the argument as same as built-in function int's.'''
