@@ -15,7 +15,10 @@ md_line = '| %s | %s |\n'
 sum_line = '%s  %s\n'
 
 def sort_keys(key):
-    ver, bit = re.search(f'-cp3(\d{{1,2}})-[^\{os.sep}]+(\d\d)\.whl$', key).groups()
+    m = re.search(f'-cp3(\d{{1,2}})-[^\{os.sep}]+(\d\d)\.whl$', key)
+    if m is None:
+        return 0, 0
+    ver, bit = m.groups()
     return int(ver), int(bit)
 
 def hash(artifact, algorithm):
