@@ -36,18 +36,15 @@ Sample usage
 
 import os
 import sys
-try:
-    from _frozen_importlib import ModuleSpec
-    from _frozen_importlib_external import ExtensionFileLoader
-except ImportError:
-    from importlib.machinery import ModuleSpec, ExtensionFileLoader
+from _frozen_importlib import ModuleSpec
+from _frozen_importlib_external import ExtensionFileLoader
 
 # _memimporter is a module built into the py2exe runstubs,
 # or a standalone module of memimport.
 from _memimporter import import_module
 
 
-__version__ = '0.13.0.0.post6'
+__version__ = '0.13.0.0.post7'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
@@ -167,7 +164,7 @@ def _verbose_msg(msg, verbosity=1):
     if max(verbose, sys.flags.verbose) >= verbosity:
         print(msg, file=sys.stderr)
 
-def set_verbose(i):
+def set_verbose(i=1):
     '''Set verbose, the argument as same as built-in function int's.'''
     global verbose
     verbose = int(i)

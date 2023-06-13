@@ -91,6 +91,7 @@ jobs:
 
       - name: Prepare for release
         run: |
+          python setup.py sdist
           python .github/helpers/gen_hash_body.py artifacts
 
       - name: Create Release
@@ -98,4 +99,4 @@ jobs:
         with:
           allowUpdates: true
           bodyFile: "body.md"
-          artifacts: "sha256.sum,artifacts/*/*.whl"
+          artifacts: "sha256.sum,dist/*"

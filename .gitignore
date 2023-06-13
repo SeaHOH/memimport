@@ -8,6 +8,7 @@ build/
 dist/
 *.egg-info/
 bdist.bat
+*.sh
 
 # Unit test / coverage reports
 test*.zip

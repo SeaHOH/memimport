@@ -10,11 +10,13 @@ import platform
 
 from importlib import machinery
 
-if platform.system() != "Windows":
-    raise RuntimeError("This package requires Windows")
+if sys.argv != ['setup.py', 'sdist']:
 
-if sys.version_info < (3, 6):
-    raise RuntimeError("This package requires Python 3.6 or later")
+    if platform.system() != "Windows":
+        raise RuntimeError("This package requires Windows")
+
+    if sys.version_info < (3, 6):
+        raise RuntimeError("This package requires Python 3.6 or later")
 
 ############################################################################
 
@@ -72,7 +74,12 @@ if __name__ == "__main__":
         project_urls={
             "Tracker": "http://github.com/SeaHOH/memimport/issues"
         },
-        license="MIT/X11",
+        license="MIT/X11 OR (MPL 2.0)",
+        license_files=[
+            "LICENSE.txt",
+            "MIT-License.txt",
+            "MPL2-License.txt",
+        ],
         setup_requires=["wheel"],
         platforms="Windows",
         python_requires=">=3.6, <3.12",

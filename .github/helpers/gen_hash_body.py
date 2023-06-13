@@ -5,6 +5,7 @@ import hashlib
 import os
 import re
 import glob
+import shutil
 
 md_head = '''\
 | %s | Filename |
@@ -18,11 +19,15 @@ def sort_keys(key):
     return int(ver), int(bit)
 
 def hash(artifact, algorithm):
-    return (hashlib.new(algorithm, open(artifact, 'rb').read()).hexdigest(),
-            os.path.basename(artifact))
+    sum = hashlib.new(algorithm, open(artifact, 'rb').read()).hexdigest().upper()
+    filename = os.path.basename(artifact)
+    if not artifact.startswith(('dist/', 'dist\\')):
+        shutil.move(artifact, f'dist/{filename}')
+    return sum, filename
 
 def generater(artifacts, algorithm):
-    artifacts = glob.glob(os.path.join(artifacts, '**/*.whl'), recursive=True)
+    artifacts = glob.glob(os.path.join(artifacts, '**/*.whl'), recursive=True) + \
+                glob.glob('dist/*.tar.gz')
     artifacts = [hash(artifact, algorithm)
                  for artifact in sorted(artifacts, key=sort_keys, reverse=True)
                  if os.path.isfile(artifact)]

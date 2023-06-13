@@ -50,7 +50,7 @@ from zipimport import *
 from _frozen_importlib import ModuleSpec, spec_from_loader
 from _frozen_importlib_external import ExtensionFileLoader, spec_from_file_location
 
-from memimport import memimport, export_hook_name
+from memimport import memimport, export_hook_name, __version__
 
 
 __all__ = [
@@ -357,7 +357,7 @@ def _set_importer(modules, attrfunc, argsfunc=None):
     if not isinstance(modules, (list, tuple)):
         modules = [modules]
     for module in modules:
-        if not isinstance((module, str)):
+        if not isinstance(module, str):
             raise ValueError(f'the module name MUST be a str, not {type(module)}')
         attrfunc(argsfunc and argsfunc(module) or module)
 
@@ -368,7 +368,7 @@ def _verbose_msg(msg, verbosity=1):
     if max(verbose, sys.flags.verbose) >= verbosity:
         print(msg, file=sys.stderr)
 
-def set_verbose(i):
+def set_verbose(i=1):
     '''Set verbose, the argument as same as built-in function int's.'''
     global verbose
     verbose = int(i)

@@ -1,6 +1,7 @@
 include source/*.c
 include source/*.h
 include *.py
-include LICENSE.txt
-include MIT-License.txt
-include MPL2-License.txt
+include *LICENSE*
+include *README*
+include *TODO*
+include VERSION
