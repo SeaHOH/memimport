@@ -66,9 +66,11 @@ def _generate_searchorders():
     import _imp
     suffixes = _imp.extension_suffixes()
     debug = '_d.pyd' in suffixes and '_d' or ''
-    suffixes += [f'{debug}.dll', f'{debug}']
     pyver = '%d%d' % sys.version_info[:2]
-    _searchorder = (
+    suffixes += [f'{pyver}{debug}.pyd']
+    suffixes += [suffix.replace('.pyd', '.dll') for suffix in suffixes]
+    suffixes += [debug, f'{pyver}{debug}']
+    _searchorder_pyver = (
         *[(f'\\__init__{suffix}', True, True) for suffix in suffixes],
         ('\\__init__.pyc', False, True),
         ('\\__init__.py', False, True),
@@ -76,13 +78,9 @@ def _generate_searchorders():
         ('.pyc', False, False),
         ('.py', False, False),
     )
-    _searchorder_pyver = (
-        *_searchorder[:-2],
-        (f'{pyver}{debug}.dll', True, False),
-        (f'{pyver}{debug}.pyd', True, False),
-        (f'{pyver}{debug}', True, False),
-        *_searchorder[-2:],
-    )
+    _searchorder = [i for i in _searchorder_pyver
+                    if pyver not in i[0] or 'win' in i[0]]
+
 _generate_searchorders(); del _generate_searchorders
 # pyver suffix, only match the last name
 _names_pyver = {'pywintypes', 'pythoncom'}
