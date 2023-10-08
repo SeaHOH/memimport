@@ -28,6 +28,14 @@ static int dprintf(char *fmt, ...)
 }
 */
 
+#if (PY_VERSION_HEX >= 0x030C0000)
+
+#include "_memimporter.h"
+
+static PyObject *uid_name;
+
+#endif
+
 #if (PY_VERSION_HEX >= 0x03030000)
 
 /* Magic for extension modules (built-in as well as dynamically
@@ -54,14 +62,20 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 	PyObject* (*p)(void);
 	PyObject *m = NULL;
 	struct PyModuleDef *def;
+	#if (PY_VERSION_HEX >= 0x030C0000)
+	PyModuleObject *mo;
+	#elif (PY_VERSION_HEX < 0x03070000)
 	char *oldcontext;
+	#else
+	const char *oldcontext;
+	#endif
 	PyObject *name = PyUnicode_FromString(modname);
 
 	if (name == NULL)
 		return -1;
 
-	PyObject *sysmodules = PyImport_GetModuleDict();
-	if (PyMapping_HasKeyString(sysmodules, (const char *)name)) {
+	PyObject *modules = PyImport_GetModuleDict();
+	if (PyMapping_HasKeyString(modules, (const char *)name)) {
 		Py_DECREF(name);
 		return 0;
 	}
@@ -78,13 +92,22 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 		return -1;
 	}
 
-        oldcontext = _Py_PackageContext;
+
+	#if (PY_VERSION_HEX < 0x030C0000)
+
+	oldcontext = _Py_PackageContext;
 	_Py_PackageContext = modname;
+
+	#endif
 
 	p = (PyObject*(*)(void))init_func;
 	m = (*p)();
 
+	#if (PY_VERSION_HEX < 0x030C0000)
+
 	_Py_PackageContext = oldcontext;
+
+	#endif
 
 
 	if (PyErr_Occurred()) {
@@ -116,10 +139,23 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 	}
 	def->m_base.m_init = p;
 
+	#if (PY_VERSION_HEX >= 0x030C0000)
+
+	/* a hack instead of call _PyImport_SwapPackageContext */
+	mo = (PyModuleObject *)m;
+	if (strcmp(PyUnicode_AsUTF8(mo->md_name), modname) != 0) {
+		if (PyDict_SetItem(mo->md_dict, uid_name, name) != 0) {
+			Py_DECREF(name);
+			return -1;
+		}
+		Py_XDECREF(mo->md_name);
+		Py_XSETREF(mo->md_name, Py_NewRef(name));
+	}
+
+	#endif
+
     #if (PY_VERSION_HEX >= 0x03070000)
 
-    PyObject *modules = NULL;
-    modules = PyImport_GetModuleDict();
     res = _PyImport_FixupExtensionObject(m, name, name, modules);
 
     #else
@@ -153,7 +189,9 @@ import_module(PyObject *self, PyObject *args)
 	ULONG_PTR cookie = 0;
 	PyObject *findproc;
 	PyObject *spec;
+	#ifndef STANDALONE
 	BOOL res;
+	#endif
 
 	int imp_res = -1;
 	struct PyModuleDef *def;
@@ -261,7 +299,15 @@ import_module(PyObject *self, PyObject *args)
 static PyObject *
 get_verbose_flag(PyObject *self, PyObject *args)
 {
+	#if (PY_VERSION_HEX >= 0x030C0000)
+
+	return PyLong_FromLong(_Py_GetConfig()->verbose);
+
+	#else
+
 	return PyLong_FromLong(Py_VerboseFlag);
+
+	#endif
 }
 
 static PyMethodDef methods[] = {
@@ -287,5 +333,11 @@ static struct PyModuleDef moduledef = {
 
 PyMODINIT_FUNC PyInit__memimporter(void)
 {
+	#if (PY_VERSION_HEX >= 0x030C0000)
+
+	uid_name = PyUnicode_FromString("__name__");
+
+	#endif
+
 	return PyModule_Create(&moduledef);
 }
