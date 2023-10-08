@@ -30,7 +30,6 @@ macros = [
     ("_CRT_SECURE_NO_WARNINGS", "1"),
     ("STANDALONE", "1")
 ]
-
 extra_compile_args = [
     "-IC:\\Program Files\\Microsoft SDKs\\Windows\\v7.0\\Include",
     "-IC:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\include",
@@ -38,7 +37,6 @@ extra_compile_args = [
     "/DSTANDALONE"
 ]
 extra_link_args = []
-
 
 if 0:
     # enable this to debug a release build
@@ -82,7 +80,7 @@ if __name__ == "__main__":
         ],
         setup_requires=["wheel"],
         platforms="Windows",
-        python_requires=">=3.6, <3.12",
+        python_requires=">=3.6, <3.13",
 
         classifiers=[
             "Development Status :: 4 - Beta",
@@ -98,6 +96,7 @@ if __name__ == "__main__":
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
             "Programming Language :: Python :: Implementation :: CPython",
             "Topic :: Software Development",
             "Topic :: Software Development :: Libraries",

@@ -4,25 +4,13 @@ on:
     tags: [ '*' ]
 
 jobs:
-  matrix:
-    name: Generate matrix
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v3
-      - id: set-matrix
-        run: |
-          TASKS=$(echo $(cat .github/workflows/matrix.json) | sed 's/ //g' )
-          echo "matrix=$TASKS" >> $GITHUB_OUTPUT
-
   build:
-    needs: matrix
     name: Build
     runs-on: windows-2019
     strategy:
       matrix:
-        cfg: ${{ fromJson(needs.matrix.outputs.matrix) }}
+        python-arch: [ 'x64' ]
+        python-version: [ '3.12' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -30,8 +18,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.cfg.python-version }}
-          architecture: ${{ matrix.cfg.python-arch }}
+          architecture: ${{ matrix.python-arch }}
+          python-version: ${{ matrix.python-version }}
 
       - name: Check Python install
         run: |
@@ -46,38 +34,28 @@ jobs:
           python -m pip install -U pip setuptools wheel
 
       - name: Build
+        id: build
         run: |
           python setup.py bdist_wheel
+          cd dist
+          dir
+          $wheelname = python -c "import glob; print(glob.glob('*.whl')[0])"
+          echo "wheelname=$wheelname" >> $env:GITHUB_OUTPUT
 
-      - name: Prepare for deployment
-        run: |
-          dir dist
-          $ver = (findstr /R [0-9] VERSION)
-          echo $ver
-          echo "VER=$ver" >> $env:GITHUB_ENV
-          $wheelname = python .github\helpers\get_wheel_name.py $ver
-          echo $wheelname
-          echo "WHEELNAME=$wheelname" >> $env:GITHUB_ENV
-
-      - name: Deploy
+      - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.WHEELNAME }}
-          path: |
-            dist/${{ env.WHEELNAME }}
-
-      - name: Install
-        run: |
-          dir
-          pip install dist/${{ env.WHEELNAME }}
-          python -c "import zipextimporter"
+          name: ${{ steps.build.outputs.wheelname }}
+          path: dist/${{ steps.build.outputs.wheelname }}
 
       - name: Test
         run: |
+          pip install dist/${{ steps.build.outputs.wheelname }}
           python test.py prepare
           python test.py test
 
   release:
+    name: Release
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -94,9 +72,10 @@ jobs:
           python setup.py sdist
           python .github/helpers/gen_hash_body.py artifacts
 
-      - name: Create Release
+      - name: Create release
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
+          prerelease: true
           bodyFile: "body.md"
-          artifacts: "sha256.sum,dist/*"
+          artifacts: "*.sum,dist/*"
