@@ -35,8 +35,13 @@ static PyObject *uid_name;
 
 #ifdef STANDALONE
 
-static int
-_PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
+#define DL_FUNC_TYPE(type, name, args) \
+typedef type(*_name)args; _name name
+
+
+DL_FUNC_TYPE(int,
+			 _PyImport_CheckSubinterpIncompatibleExtensionAllowed,
+			 (const char *));
 
 #endif
 #endif
