@@ -34,11 +34,18 @@ static int dprintf(char *fmt, ...)
 
 static PyObject *uid_name;
 
-#ifdef STANDALONE
+#define Py_IMPORTED_SYMBOL __declspec(dllimport)
+#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
+#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
 
-int (*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *);
+PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
+    const char *name);
 
-#endif
+//#ifdef STANDALONE
+//
+//int (*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *);
+//
+//#endif
 #endif
 
 #if (PY_VERSION_HEX >= 0x03030000)
@@ -373,29 +380,29 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	uid_name = PyUnicode_FromString("__name__");
 
-	#ifdef STANDALONE
-
-	PyObject *pmodname = PyUnicode_FromString("sys");
-	PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	PyObject *sys = PyImport_Import(pmodname);
-	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	Py_DECREF(pattrname);
-	Py_DECREF(pmodname);
-	Py_DECREF(sys);
-	Py_DECREF(dllhandle);
-
-	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
-	#define DL_DATA(name) (FARPROC)(*name2) = MyGetProcAddress(hmod_pydll, #name)
-
-	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
-	int Py_VerboseFlag2 = 9;
-	Py_VerboseFlag2 = *(MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
+	//#ifdef STANDALONE
+	//
+	//PyObject *pmodname = PyUnicode_FromString("sys");
+	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	//PyObject *sys = PyImport_Import(pmodname);
+	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	//Py_DECREF(pattrname);
+	//Py_DECREF(pmodname);
+	//Py_DECREF(sys);
+	//Py_DECREF(dllhandle);
+	//
+	//#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
+	//#define DL_DATA(name) (FARPROC)(*name2) = MyGetProcAddress(hmod_pydll, #name)
+	//
+	//DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
+	//int Py_VerboseFlag2 = 9;
+	//(FARPROC)(**&Py_VerboseFlag2) = MyGetProcAddress(hmod_pydll, "Py_VerboseFlag");
 	//Py_VerboseFlag2 = *((int*)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
-	fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
-
-	#endif
-	#endif
+	//fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
+	//
+	//#endif
+	//#endif
 
 	return PyModule_Create(&moduledef);
 }
