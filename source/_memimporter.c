@@ -35,7 +35,7 @@ static PyObject *uid_name;
 
 #ifdef STANDALONE
 
-int
+static int
 _PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
 
 #endif
