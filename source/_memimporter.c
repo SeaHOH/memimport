@@ -7,6 +7,7 @@
 static char module_doc[] =
 "Importer which can load extension modules from memory";
 
+#include "_memimporter.h"
 #include "MyLoadLibrary.h"
 #include "actctx.h"
 
@@ -30,11 +31,17 @@ static int dprintf(char *fmt, ...)
 
 #if (PY_VERSION_HEX >= 0x030C0000)
 
-#include "_memimporter.h"
-
 static PyObject *uid_name;
 
 #endif
+
+/* Python/import.c */
+#if (PY_VERSION_HEX >= 0x030B0000) && defined(__EMSCRIPTEN__) && defined(PY_CALL_TRAMPOLINE)
+#include <emscripten.h>
+EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
+    return wasmTable.get(func)();
+});
+#endif // __EMSCRIPTEN__ && PY_CALL_TRAMPOLINE
 
 #if (PY_VERSION_HEX >= 0x03030000)
 
@@ -56,28 +63,28 @@ static PyObject *uid_name;
 
 /* c:/users/thomas/devel/code/cpython-3.4/Python/importdl.c 73 */
 
-int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
+int do_import(FARPROC init_func, const char *modname, PyObject *spec, PyObject **mod)
 {
-	int res = -1;
-	PyObject* (*p)(void);
-	PyObject *m = NULL;
+	int res;
+	PyModInitFunction p;
+	PyObject *m = NULL, *name = NULL, *path = NULL, *usname = NULL;
 	struct PyModuleDef *def;
-	#if (PY_VERSION_HEX >= 0x030C0000)
-	PyModuleObject *mo;
-	#elif (PY_VERSION_HEX < 0x03070000)
-	char *oldcontext;
-	#else
 	const char *oldcontext;
-	#endif
-	PyObject *name = PyUnicode_FromString(modname);
 
-	if (name == NULL)
-		return -1;
+	name = PyUnicode_FromString(modname);
+	if (name == NULL) {
+		goto error;
+	}
+
+	path = PyObject_GetAttrString(spec, "origin");
+	if (path == NULL) {
+		goto error;
+	}
 
 	PyObject *modules = PyImport_GetModuleDict();
-	if (PyMapping_HasKeyString(modules, (const char *)name)) {
-		Py_DECREF(name);
-		return 0;
+	if (PyMapping_HasKeyString(modules, name)) {
+		res = 0;
+		goto finalize;
 	}
 
 	if (init_func == NULL) {
@@ -88,41 +95,44 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 			PyErr_SetImportError(msg, name, NULL);
 			Py_DECREF(msg);
 		}
-		Py_DECREF(name);
-		return -1;
+		goto error;
 	}
 
+	p = (PyModInitFunction)init_func;
 
-	#if (PY_VERSION_HEX < 0x030C0000)
-
-	oldcontext = _Py_PackageContext;
-	_Py_PackageContext = modname;
-
-	#endif
-
-	p = (PyObject*(*)(void))init_func;
-	m = (*p)();
-
-	#if (PY_VERSION_HEX < 0x030C0000)
-
-	_Py_PackageContext = oldcontext;
-
-	#endif
+	/* Package context is needed for single-phase init */
+	oldcontext = _PyImport_SwapPackageContext(modname);
+	m = _PyImport_InitFunc_TrampolineCall(p);
+	_PyImport_SwapPackageContext(oldcontext);
 
 
 	if (PyErr_Occurred()) {
-		Py_DECREF(name);
-		return -1;
+		goto error;
 	}
 
 	/* multi-phase initialization - PEP 489 */
     if (PyObject_TypeCheck(m, &PyModuleDef_Type)) {
-		Py_DECREF(name);
 		*mod = PyModule_FromDefAndSpec((PyModuleDef*)m, spec);
-		return 2;
+		res = 2;
+		goto finalize;
     }
 
 	/* fall back to single-phase initialization */
+
+	#if (PY_VERSION_HEX >= 0x030C0000)
+
+	if (_PyImport_CheckSubinterpIncompatibleExtensionAllowed(modname) < 0) {
+		goto error;
+	}
+
+	#endif
+
+	usname = PyUnicode_AsEncodedString(name, "ascii", NULL);
+	if (usname == NULL) {
+		/* don't allow legacy init for non-ASCII module names */
+		PyErr_Clear();
+		goto error;
+	}
 
 	/* Remember pointer to module init function. */
 	def = PyModule_GetDef(m);
@@ -134,54 +144,68 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 			PyErr_SetObject(PyExc_SystemError, msg);
 			Py_DECREF(msg);
 		}
-		Py_DECREF(name);
-		return -1;
+		goto error;
 	}
 	def->m_base.m_init = p;
 
 	#if (PY_VERSION_HEX >= 0x030C0000)
 
-	/* a hack instead of _PyImport_SwapPackageContext & _PyImport_ResolveNameWithPackageContext
-
-	   Origin:
-	     _PyImport_SwapPackageContext()
-	     call <module init func>
-	       <module init func> -> PyModule_Create() -> PyModule_Create2() -> PyModule_CreateInitialized()
-	         PyModule_CreateInitialized() -> _PyImport_ResolveNameWithPackageContext()
-	         PyModule_CreateInitialized() -> PyModule_New() -> PyModule_NewObject() -> module_init_dict()
-	           module_init_dict(): set <module attribute __name__>
-	           module_init_dict(): set <module struct member md_name>
-	     _PyImport_SwapPackageContext()
-
-	   Hack:
-	     call <module init func>
-	       ...
-	     re-set <module attribute __name__>
-	     re-set <module struct member md_name>
-	*/
-	mo = (PyModuleObject *)m;
-	if (strcmp(PyUnicode_AsUTF8(mo->md_name), modname) != 0) {
-		if (PyDict_SetItem(mo->md_dict, uid_name, name) != 0) {
-			Py_DECREF(name);
-			return -1;
+	/* A hack instead of _PyImport_SwapPackageContext & _PyImport_ResolveNameWithPackageContext
+	 *
+	 * Origin:
+	 *   _PyImport_SwapPackageContext()
+	 *   call <module init func>
+	 *     <module init func> -> PyModule_Create() -> PyModule_Create2() -> PyModule_CreateInitialized()
+	 *       PyModule_CreateInitialized() -> _PyImport_ResolveNameWithPackageContext()
+	 *       PyModule_CreateInitialized() -> PyModule_New() -> PyModule_NewObject() -> module_init_dict()
+	 *         module_init_dict(): set <module attribute __name__>
+	 *         module_init_dict(): set <module struct member md_name>
+	 *   _PyImport_SwapPackageContext()
+	 *
+	 * Hack:
+	 *   call <module init func>
+	 *     ...
+	 *   re-set <module attribute __name__>
+	 *   re-set <module struct member md_name>
+	 */
+	PyModuleObject *md = (PyModuleObject *)m;
+	if (strcmp(PyUnicode_AsUTF8(md->md_name), modname) != 0) {
+		if (PyDict_SetItem(md->md_dict, uid_name, name) != 0) {
+			goto error;
 		}
-		Py_XDECREF(mo->md_name);
-		Py_XSETREF(mo->md_name, Py_NewRef(name));
+		Py_XDECREF(md->md_name);
+		Py_XSETREF(md->md_name, Py_NewRef(name));
 	}
 
 	#endif
 
-    #if (PY_VERSION_HEX >= 0x03070000)
+	#if (PY_VERSION_HEX >= 0x03070000)
 
-    res = _PyImport_FixupExtensionObject(m, name, name, modules);
+	res = _PyImport_FixupExtensionObject(m, name, path, modules);
 
-    #else
+	#else
 
-    res = _PyImport_FixupExtensionObject(m, name, name);
+	res = _PyImport_FixupExtensionObject(m, name, path);
 
-    #endif
+	#endif
 
-    Py_DECREF(name);
+	if (res < 0) {
+		goto error;
+	}
+
+	Py_DECREF(name);
+	Py_DECREF(path);
+	Py_DECREF(usname);
+	return res;
+
+error:
+	res = -1;
+
+finalize:
+	Py_XDECREF(m);
+	Py_XDECREF(name);
+	Py_XDECREF(path);
+	Py_XDECREF(usname);
 	return res;
 }
 
@@ -197,18 +221,15 @@ extern wchar_t dirname[]; // executable/dll directory
 static PyObject *
 import_module(PyObject *self, PyObject *args)
 {
-	char *initfuncname;
-	char *modname;
-	char *pathname;
+	const char *initfuncname;
+	const char *modname;
+	const char *pathname;
 	HMODULE hmem;
 	FARPROC init_func;
 
 	ULONG_PTR cookie = 0;
 	PyObject *findproc;
 	PyObject *spec;
-	#ifndef STANDALONE
-	BOOL res;
-	#endif
 
 	int imp_res = -1;
 	struct PyModuleDef *def;
@@ -219,10 +240,10 @@ import_module(PyObject *self, PyObject *args)
 
 	/* code, initfuncname, fqmodulename, path, spec */
 	if (!PyArg_ParseTuple(args, "sssOO:import_module",
-			      &modname, &pathname,
-			      &initfuncname,
-			      &findproc,
-				  &spec))
+						  &modname, &pathname,
+						  &initfuncname,
+						  &findproc,
+						  &spec))
 		return NULL;
 
 	PyObject *m = PyModule_New(modname);
@@ -258,7 +279,7 @@ import_module(PyObject *self, PyObject *args)
 	 * numpy is such an example).
 	 */
 	#ifndef STANDALONE
-	res = SetDllDirectoryW(dirname); // Add a directory to the search path
+	BOOL res = SetDllDirectoryW(dirname); // Add a directory to the search path
 	#endif
 
 	hmem = MyLoadLibrary(pathname, NULL, 0, findproc);
@@ -269,18 +290,18 @@ import_module(PyObject *self, PyObject *args)
 	_My_DeactivateActCtx(cookie);
 
 	if (!hmem) {
-	        char *msg;
+		char *msg;
 		PyObject *error;
 		FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-			       NULL,
-			       GetLastError(),
-			       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			       (void *)&msg,
-			       0,
-			       NULL);
+					   NULL,
+					   GetLastError(),
+					   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+					   (void *)&msg,
+					   0,
+					   NULL);
 		msg[strlen(msg)-2] = '\0';
 		error = PyUnicode_FromFormat("MemoryLoadLibrary failed loading %s: %s (%d)",
-					     pathname, msg, GetLastError());
+						pathname, msg, GetLastError());
 		if (error) {
 			PyErr_SetObject(PyExc_ImportError, error);
 			Py_DECREF(error);
@@ -332,19 +353,19 @@ static PyMethodDef methods[] = {
 	  "import_module(modname, pathname, initfuncname, finder, spec) -> module" },
 	{ "get_verbose_flag", get_verbose_flag, METH_NOARGS,
 	  "Return the Py_Verbose flag" },
-	{ NULL, NULL },		/* Sentinel */
+	{ NULL, NULL }, /* Sentinel */
 };
 
 static struct PyModuleDef moduledef = {
 	PyModuleDef_HEAD_INIT,
 	"_memimporter", /* m_name */
-	module_doc, /* m_doc */
-	-1, /* m_size */
-	methods, /* m_methods */
-	NULL, /* m_reload */
-	NULL, /* m_traverse */
-	NULL, /* m_clear */
-	NULL, /* m_free */
+	module_doc,     /* m_doc */
+	-1,             /* m_size */
+	methods,        /* m_methods */
+	NULL,           /* m_reload */
+	NULL,           /* m_traverse */
+	NULL,           /* m_clear */
+	NULL,           /* m_free */
 };
 
 
@@ -354,7 +375,34 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	uid_name = PyUnicode_FromString("__name__");
 
+	#ifdef STANDALONE
+
+	PyObject *pmodname = PyUnicode_FromString("sys");
+	PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	PyObject *sys = PyImport_Import(pmodname);
+	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	HMODULE hmod_pydll = *((HMODULE)PyLong_AsVoidPtr(dllhandle));
+	Py_DECREF(pattrname);
+	Py_DECREF(pmodname);
+	Py_DECREF(sys);
+	Py_DECREF(dllhandle);
+
+	#define DL_FUNC(res, name, args) \
+	name = (res(*)args)MyGetProcAddress(hmod_pydll, #name);
+
+	DL_FUNC(int,
+			_PyImport_CheckSubinterpIncompatibleExtensionAllowed,
+			(const char *name));
+
+	#endif
 	#endif
 
 	return PyModule_Create(&moduledef);
 }
+
+#if (PY_VERSION_HEX >= 0x030C0000) && defined(STANDALONE)
+
+int
+_PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
+
+#endif

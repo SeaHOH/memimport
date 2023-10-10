@@ -1,6 +1,15 @@
-#ifndef Py_BUILD_CORE
+typedef PyObject *(*PyModInitFunction)(void);
 
-/* internal/pycore_moduleobject.h */
+/* Python/importdl.h */
+#if (PY_VERSION_HEX >= 0x030B0000) && defined(__EMSCRIPTEN__) && defined(PY_CALL_TRAMPOLINE)
+extern PyObject *_PyImport_InitFunc_TrampolineCall(PyModInitFunction func);
+#else
+#define _PyImport_InitFunc_TrampolineCall(func) (func)()
+#endif
+
+#if (PY_VERSION_HEX >= 0x030C0000) && !defined(Py_BUILD_CORE)
+
+/* Include/internal/pycore_moduleobject.h */
 typedef struct {
     PyObject ob_base;
     PyObject *md_dict;
@@ -11,3 +20,26 @@ typedef struct {
 } PyModuleObject;
 
 #endif
+
+#if (PY_VERSION_HEX >= 0x030C0000)
+//#define PKGCONTEXT (_PyRuntimeC.imports.pkgcontext)
+const char *pkgcontext = "";
+#define PKGCONTEXT pkgcontext
+#else
+#define PKGCONTEXT _Py_PackageContext
+#endif
+
+inline const char *
+_PyImport_SwapPackageContext(const char *newcontext)
+{
+    #if (PY_VERSION_HEX >= 0x03070000)
+    const char *oldcontext = PKGCONTEXT;
+    PKGCONTEXT = newcontext;
+    #else
+    const char *oldcontext = (const char *)PKGCONTEXT;
+    PKGCONTEXT = (char *)newcontext;
+    #endif
+
+    return oldcontext;
+}
+
