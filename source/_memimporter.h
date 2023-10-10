@@ -1,16 +1,17 @@
 typedef PyObject *(*PyModInitFunction)(void);
 
-/* Python/importdl.h */
 #if (PY_VERSION_HEX >= 0x030B0000) && defined(__EMSCRIPTEN__) && defined(PY_CALL_TRAMPOLINE)
+/* Python/import.c */
 #include <emscripten.h>
 EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
     return wasmTable.get(func)();
 });
 #else
+/* Python/importdl.h */
 #define _PyImport_InitFunc_TrampolineCall(func) (func)()
 #endif
 
-#if (PY_VERSION_HEX >= 0x030C0000) && !defined(Py_BUILD_CORE)
+#if (PY_VERSION_HEX >= 0x030C0000)
 
 /* Include/internal/pycore_moduleobject.h */
 typedef struct {
@@ -22,6 +23,8 @@ typedef struct {
     PyObject *md_name;
 } PyModuleObject;
 
+PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
+    const char *name);
 #endif
 
 #if (PY_VERSION_HEX >= 0x030C0000)

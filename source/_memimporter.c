@@ -34,12 +34,12 @@ static int dprintf(char *fmt, ...)
 
 static PyObject *uid_name;
 
-#define Py_IMPORTED_SYMBOL __declspec(dllimport)
-#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
-#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
-
-PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
-    const char *name);
+//#define Py_IMPORTED_SYMBOL __declspec(dllimport)
+//#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
+//#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
+//
+//PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
+//    const char *name);
 
 //#ifdef STANDALONE
 //
