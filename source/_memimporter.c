@@ -402,7 +402,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
 	//
 	//#endif
-	//#endif
+	#endif
 
 	return PyModule_Create(&moduledef);
 }
