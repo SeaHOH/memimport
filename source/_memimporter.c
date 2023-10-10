@@ -3,6 +3,7 @@
 #define NTDDI_VERSION 0x05020000
 #include <Python.h>
 #include <windows.h>
+#include <stdio.h>
 
 static char module_doc[] =
 "Importer which can load extension modules from memory";
@@ -34,8 +35,6 @@ static int dprintf(char *fmt, ...)
 static PyObject *uid_name;
 
 #ifdef STANDALONE
-
-//#define DL_FUNC_TYPE(res, name, args) res (*)args name
 
 int (*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *);
 
@@ -386,9 +385,14 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(sys);
 	Py_DECREF(dllhandle);
 
-	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
+	#define DL_PRT dl_funcptr
+	#define DL_FUNC(name) (DL_PRT)name = MyGetProcAddress(hmod_pydll, #name);
+	#define DL_DATA(name) (DL_PRT)(*name2) = MyGetProcAddress(hmod_pydll, #name)
 
 	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
+	int Py_VerboseFlag2 = 9;
+	DL_DATA(Py_VerboseFlag);
+	fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
 
 	#endif
 	#endif
