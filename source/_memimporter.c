@@ -386,7 +386,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(dllhandle);
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
-	#define DL_DATA(name) (FARPROC)(*name2) = MyGetProcAddress(hmod_pydll, #name)
+	#define DL_DATA(name) (FARPROC)(**name2) = MyGetProcAddress(hmod_pydll, #name)
 
 	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
 	int Py_VerboseFlag2 = 9;
