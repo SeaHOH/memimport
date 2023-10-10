@@ -2,7 +2,10 @@ typedef PyObject *(*PyModInitFunction)(void);
 
 /* Python/importdl.h */
 #if (PY_VERSION_HEX >= 0x030B0000) && defined(__EMSCRIPTEN__) && defined(PY_CALL_TRAMPOLINE)
-extern PyObject *_PyImport_InitFunc_TrampolineCall(PyModInitFunction func);
+#include <emscripten.h>
+EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
+    return wasmTable.get(func)();
+});
 #else
 #define _PyImport_InitFunc_TrampolineCall(func) (func)()
 #endif

@@ -33,15 +33,13 @@ static int dprintf(char *fmt, ...)
 
 static PyObject *uid_name;
 
-#endif
+#ifdef(STANDALONE)
 
-/* Python/import.c */
-#if (PY_VERSION_HEX >= 0x030B0000) && defined(__EMSCRIPTEN__) && defined(PY_CALL_TRAMPOLINE)
-#include <emscripten.h>
-EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
-    return wasmTable.get(func)();
-});
-#endif // __EMSCRIPTEN__ && PY_CALL_TRAMPOLINE
+int
+_PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
+
+#endif
+#endif
 
 #if (PY_VERSION_HEX >= 0x03030000)
 
@@ -82,7 +80,7 @@ int do_import(FARPROC init_func, const char *modname, PyObject *spec, PyObject *
 	}
 
 	PyObject *modules = PyImport_GetModuleDict();
-	if (PyMapping_HasKeyString(modules, name)) {
+	if (PyMapping_HasKeyString(modules, modname)) {
 		res = 0;
 		goto finalize;
 	}
@@ -399,10 +397,3 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	return PyModule_Create(&moduledef);
 }
-
-#if (PY_VERSION_HEX >= 0x030C0000) && defined(STANDALONE)
-
-int
-_PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
-
-#endif
