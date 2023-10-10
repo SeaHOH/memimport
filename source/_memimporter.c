@@ -386,11 +386,12 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(dllhandle);
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
-	#define DL_DATA(name) (FARPROC)(**name2) = MyGetProcAddress(hmod_pydll, #name)
+	#define DL_DATA(name) (FARPROC)(*name2) = MyGetProcAddress(hmod_pydll, #name)
 
 	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
 	int Py_VerboseFlag2 = 9;
-	(FARPROC)(**Py_VerboseFlag2) = MyGetProcAddress(hmod_pydll, "Py_VerboseFlag");
+	//(FARPROC)(*Py_VerboseFlag2) = MyGetProcAddress(hmod_pydll, "Py_VerboseFlag");
+	Py_VerboseFlag2 = *((int)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
 	fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
 
 	#endif
