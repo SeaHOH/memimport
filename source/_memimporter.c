@@ -33,7 +33,7 @@ static int dprintf(char *fmt, ...)
 
 static PyObject *uid_name;
 
-#ifdef(STANDALONE)
+#ifdef STANDALONE
 
 int
 _PyImport_CheckSubinterpIncompatibleExtensionAllowed(const char *name);
@@ -379,18 +379,15 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	PyObject *pattrname = PyUnicode_FromString("dllhandle");
 	PyObject *sys = PyImport_Import(pmodname);
 	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	HMODULE hmod_pydll = *((HMODULE)PyLong_AsVoidPtr(dllhandle));
+	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
 	Py_DECREF(pattrname);
 	Py_DECREF(pmodname);
 	Py_DECREF(sys);
 	Py_DECREF(dllhandle);
 
-	#define DL_FUNC(res, name, args) \
-	name = (res(*)args)MyGetProcAddress(hmod_pydll, #name);
+	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name);
 
-	DL_FUNC(int,
-			_PyImport_CheckSubinterpIncompatibleExtensionAllowed,
-			(const char *name));
+	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
 
 	#endif
 	#endif
