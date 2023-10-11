@@ -407,7 +407,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	DL_DATA(_PyRuntimeState, _My_PyRuntime);
 	fprintf(stderr, "PKGCONTEXT: %s\n", (*_My_PyRuntime).imports.pkgcontext);
-	fprintf(stderr, "PKGCONTEXT: %s\n", *_My_PyRuntime.imports.pkgcontext);
+	//fprintf(stderr, "PKGCONTEXT: %s\n", *_My_PyRuntime.imports.pkgcontext);
 
 	#endif
 	#endif
