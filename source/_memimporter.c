@@ -406,6 +406,8 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
 
 	DL_DATA(_PyRuntimeState, _My_PyRuntime);
+	fprintf(stderr, "PKGCONTEXT: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	fprintf(stderr, "PKGCONTEXT: %s\n", *_My_PyRuntime.imports.pkgcontext);
 
 	#endif
 	#endif
