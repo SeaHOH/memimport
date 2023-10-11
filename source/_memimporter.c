@@ -3,6 +3,7 @@
 #define NTDDI_VERSION 0x05020000
 
 #if (PY_VERSION_HEX >= 0x030C0000) && defined(STANDALONE)
+#define Py_BUILD_CORE
 #define Py_BUILD_CORE_BUILTIN
 #endif
 
