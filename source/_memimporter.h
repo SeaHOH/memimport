@@ -36,7 +36,7 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 #if (PY_VERSION_HEX >= 0x030C0000)
 #define PKGCONTEXT (_PyRuntime.imports.pkgcontext)
 //const char *pkgcontext = "";
-#define PKGCONTEXT pkgcontext
+//#define PKGCONTEXT pkgcontext
 #else
 #define PKGCONTEXT _Py_PackageContext
 #endif
