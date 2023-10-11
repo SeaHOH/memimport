@@ -401,10 +401,10 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(dllhandle);
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name)
-	#define DL_DATA(type, name) name = &(type*)MyGetProcAddress(hmod_pydll, #name)
+	#define DL_DATA(type, name) name = &(type)MyGetProcAddress(hmod_pydll, #name)
 
 	int *Py_VerboseFlag2;
-	Py_VerboseFlag2 = &((int *)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
+	Py_VerboseFlag2 = &((int)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
 	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
 
 	DL_DATA(_PyRuntimeState, _My_PyRuntime);
