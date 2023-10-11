@@ -15,6 +15,7 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 
 #define Py_BUILD_CORE
 #define Py_BUILD_CORE_BUILTIN
+#include <Python.h>
 
 #define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
 #define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
@@ -46,8 +47,10 @@ inline const char *
 _PyImport_SwapPackageContext(const char *newcontext)
 {
     #if (PY_VERSION_HEX >= 0x03070000)
+    PyThread_acquire_lock((*_My_PyRuntime).imports.extensions.mutex, WAIT_LOCK);
     const char *oldcontext = ((*_My_PyRuntime).imports.pkgcontext);
     ((*_My_PyRuntime).imports.pkgcontext) = newcontext;
+    PyThread_release_lock((*_My_PyRuntime).imports.extensions.mutex);
     #else
     const char *oldcontext = (const char *)PKGCONTEXT;
     PKGCONTEXT = (char *)newcontext;

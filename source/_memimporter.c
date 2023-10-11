@@ -2,19 +2,17 @@
 #define _WIN32_WINNT 0x0502
 #define NTDDI_VERSION 0x05020000
 
-#if (PY_VERSION_HEX >= 0x030C0000) && defined(STANDALONE)
-#define Py_BUILD_CORE
-#define Py_BUILD_CORE_BUILTIN
-#endif
-
+#if (PY_VERSION_HEX < 0x030C0000) || !defined(STANDALONE)
 #include <Python.h>
+#endif
+#include "_memimporter.h"
+
 #include <windows.h>
 #include <stdio.h>
 
 static char module_doc[] =
 "Importer which can load extension modules from memory";
 
-#include "_memimporter.h"
 #include "MyLoadLibrary.h"
 #include "actctx.h"
 
