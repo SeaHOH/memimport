@@ -14,11 +14,12 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 #if (PY_VERSION_HEX >= 0x030C0000)
 
 #define Py_BUILD_CORE
-#define Py_BUILD_CORE_BUILTIN
+//#define Py_BUILD_CORE_BUILTIN
 #include <Python.h>
 
 #define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
 #define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
+#define PyMODINIT_FUNC Py_EXPORTED_SYMBOL PyObject*
 
 #include <internal/pycore_moduleobject.h>
 #include <internal/pycore_runtime.h>
