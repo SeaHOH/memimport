@@ -9,6 +9,9 @@ def prepare():
         zf.writestr('testpkg\\_memimporter\\submod.py', b'loaded = True')
 
 def test_zipextimporter():
+    import _memimporter
+    print(_memimporter)
+
     import importlib
     import zipimport
     import zipextimporter
