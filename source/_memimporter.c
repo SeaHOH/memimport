@@ -113,8 +113,9 @@ int do_import(FARPROC init_func, const char *modname, PyObject *spec, PyObject *
 
 	/* Package context is needed for single-phase init */
 	oldcontext = _PyImport_SwapPackageContext(modname);
+	fprintf(stderr, "oldcontext: %s\n", oldcontext);
 	m = _PyImport_InitFunc_TrampolineCall(p);
-	_PyImport_SwapPackageContext(oldcontext);
+	fprintf(stderr, "lastcontext: %s\n", _PyImport_SwapPackageContext(oldcontext));
 
 
 	if (PyErr_Occurred()) {
