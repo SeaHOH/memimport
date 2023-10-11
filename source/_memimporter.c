@@ -408,10 +408,14 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
 
 	DL_DATA(_PyRuntimeState, _PyRuntime, _My_PyRuntime);
-	fprintf(stderr, "PKGCONTEXT: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	fprintf(stderr, "PKGCONTEXTb: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	fprintf(stderr, "OPKGCONTEXTb: %s\n", _PyRuntime.imports.pkgcontext);
 
 	#endif
 	#endif
 
-	return PyModule_Create(&moduledef);
+	PyObject *m = PyModule_Create(&moduledef);
+	fprintf(stderr, "PKGCONTEXTa: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	fprintf(stderr, "OPKGCONTEXTa: %s\n", _PyRuntime.imports.pkgcontext);
+	return m;
 }
