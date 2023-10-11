@@ -36,9 +36,9 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 
 #if (PY_VERSION_HEX >= 0x030C0000)
 _PyRuntimeState *_My_PyRuntime;
-#define PKGCONTEXT ((*_My_PyRuntime).imports.pkgcontext)
-//const char *pkgcontext = "";
-//#define PKGCONTEXT pkgcontext
+//#define PKGCONTEXT ((*_My_PyRuntime).imports.pkgcontext)
+const char *pkgcontext = "";
+#define PKGCONTEXT pkgcontext
 #else
 #define PKGCONTEXT _Py_PackageContext
 #endif
@@ -47,10 +47,8 @@ inline const char *
 _PyImport_SwapPackageContext(const char *newcontext)
 {
     #if (PY_VERSION_HEX >= 0x03070000)
-    PyThread_acquire_lock((*_My_PyRuntime).imports.extensions.mutex, WAIT_LOCK);
-    const char *oldcontext = ((*_My_PyRuntime).imports.pkgcontext);
-    ((*_My_PyRuntime).imports.pkgcontext) = newcontext;
-    PyThread_release_lock((*_My_PyRuntime).imports.extensions.mutex);
+    const char *oldcontext = PKGCONTEXT;
+    PKGCONTEXT = newcontext;
     #else
     const char *oldcontext = (const char *)PKGCONTEXT;
     PKGCONTEXT = (char *)newcontext;
