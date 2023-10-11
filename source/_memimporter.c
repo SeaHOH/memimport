@@ -38,7 +38,7 @@ static int dprintf(char *fmt, ...)
 
 #if (PY_VERSION_HEX >= 0x030C0000)
 
-static PyObject *uid_name;
+extern static PyObject *uid_name;
 
 //#define Py_IMPORTED_SYMBOL __declspec(dllimport)
 //#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
@@ -401,10 +401,10 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(dllhandle);
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name)
-	#define DL_DATA(type, name) name = *(type*)MyGetProcAddress(hmod_pydll, #name)
+	#define DL_DATA(type, name) name = &*(type*)MyGetProcAddress(hmod_pydll, #name)
 
 	int *Py_VerboseFlag2;
-	Py_VerboseFlag2 = *((int*)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
+	Py_VerboseFlag2 = &*((int*)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
 	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
 
 	DL_DATA(_PyRuntimeState, _My_PyRuntime);
