@@ -52,7 +52,7 @@ static PyObject *uid_name;
 //int (*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *);
 //
 //#endif
-extern struct _PyRuntimeState *_My_PyRuntime;
+extern _PyRuntimeState *_My_PyRuntime;
 
 #endif
 
