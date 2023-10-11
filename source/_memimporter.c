@@ -403,7 +403,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	int Py_VerboseFlag2 = 9;
 	Py_VerboseFlag2 = *((int *)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag"));
-	fprintf(stderr, 'VerboseFlag: %d\n', Py_VerboseFlag2);
+	fprintf(stderr, "VerboseFlag: %d\n", Py_VerboseFlag2);
 
 	#endif
 	#endif
