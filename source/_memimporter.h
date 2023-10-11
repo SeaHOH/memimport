@@ -46,8 +46,8 @@ inline const char *
 _PyImport_SwapPackageContext(const char *newcontext)
 {
     #if (PY_VERSION_HEX >= 0x03070000)
-    const char *oldcontext = PKGCONTEXT;
-    PKGCONTEXT = newcontext;
+    const char *oldcontext = ((*_My_PyRuntime).imports.pkgcontext);
+    ((*_My_PyRuntime).imports.pkgcontext) = newcontext;
     #else
     const char *oldcontext = (const char *)PKGCONTEXT;
     PKGCONTEXT = (char *)newcontext;
