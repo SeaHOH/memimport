@@ -13,23 +13,26 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 
 #if (PY_VERSION_HEX >= 0x030C0000)
 
-/* Include/internal/pycore_moduleobject.h */
-typedef struct {
-    PyObject ob_base;
-    PyObject *md_dict;
-    PyModuleDef *md_def;
-    void *md_state;
-    PyObject *md_weaklist;
-    PyObject *md_name;
-} PyModuleObject;
+#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
+#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
 
-PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
-    const char *name);
+#include <internal/pycore_moduleobject.h>
+#include <internal/pycore_runtime.h>
+/* Include/internal/pycore_moduleobject.h */
+//typedef struct {
+//    PyObject ob_base;
+//    PyObject *md_dict;
+//    PyModuleDef *md_def;
+//    void *md_state;
+//    PyObject *md_weaklist;
+//    PyObject *md_name;
+//} PyModuleObject;
+
 #endif
 
 #if (PY_VERSION_HEX >= 0x030C0000)
-//#define PKGCONTEXT (_PyRuntimeC.imports.pkgcontext)
-const char *pkgcontext = "";
+#define PKGCONTEXT (_PyRuntime.imports.pkgcontext)
+//const char *pkgcontext = "";
 #define PKGCONTEXT pkgcontext
 #else
 #define PKGCONTEXT _Py_PackageContext

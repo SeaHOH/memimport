@@ -1,6 +1,11 @@
 // Need to define these to be able to use SetDllDirectory.
 #define _WIN32_WINNT 0x0502
 #define NTDDI_VERSION 0x05020000
+
+#if (PY_VERSION_HEX >= 0x030C0000) && defined(STANDALONE)
+#define Py_BUILD_CORE_BUILTIN
+#endif
+
 #include <Python.h>
 #include <windows.h>
 #include <stdio.h>

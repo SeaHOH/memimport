@@ -38,10 +38,6 @@ extra_compile_args = [
 ]
 extra_link_args = []
 
-if sys.version_info > (3, 12):
-    macros += [
-        ("Py_BUILD_CORE_BUILTIN", "1")
-    ]
 if 0:
     # enable this to debug a release build
     extra_compile_args.append("/Od")
