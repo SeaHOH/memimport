@@ -396,7 +396,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//DL_DATA_PTR(_PyRuntime);
 	//
 	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
-	#define SEARCH_RANGE 1000
+	#define SEARCH_RANGE 300
 	#define SEARCH_STEP 1
 	#define SEARCH_LENGHT 12
 	int offset = -SEARCH_RANGE, index = 0, pi;
@@ -407,9 +407,9 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		p = *(const char**)(&(_PyRuntime.imports.pkgcontext) + offset);
 		index = 0;
 		pi = *(int*)(&p);
-		fprintf(stderr, "p: %d, %d\n", p, pi);
+		fprintf(stderr, "p: %d\n", pi);
 		fprintf(stderr, "offset: %d\n", offset);
-		while ( (pi > 1000 || pi < -1000 ) && index < SEARCH_LENGHT ) {
+		while ( (pi > 100000 || pi < -100000 ) && index < SEARCH_LENGHT ) {
 			if (*(char*)(mn+index) != *(char*)(p+index)) {
 				index = SEARCH_LENGHT;
 			}
