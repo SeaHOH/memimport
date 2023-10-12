@@ -397,7 +397,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//
 	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
 	#define SEARCH_RANGE 100
-	int offset = -SEARCH_RANGE;
+	int offset = 0;
 	_Py_PackageContext = _PyRuntime.imports.pkgcontext;
 	const char *p;
 	for ( ; offset < SEARCH_RANGE; offset = offset + 1 ) {
