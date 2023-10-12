@@ -404,9 +404,9 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	char *mn = "_memimporter";
 	const char *p;
 	do {
-		p = *(const char*)(&_Py_PackageContext + offset);
+		p = *(const char**)(&_Py_PackageContext + offset);
 		index = 0;
-		fprintf(stderr, "p: %s\n", p);
+		fprintf(stderr, "p: %d\n", &p);
 		fprintf(stderr, "offset: %d\n", offset);
 		while ( p != NULL && index < SEARCH_LENGHT ) {
 			if (*(char*)(mn+index) != *(char*)(p+index)) {
