@@ -408,12 +408,12 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		index = 0;
 		fprintf(stderr, "p: %s\n", p);
 		fprintf(stderr, "offset: %d\n", offset);
-		do {
+		while ( p != NULL && index < SEARCH_LENGHT ) {
 			if (*(char*)(mn+index) != *(char*)(p+index)) {
 				index = SEARCH_LENGHT;
 			}
 			index += SEARCH_STEP;
-		} while ( p != NULL && index < SEARCH_LENGHT );
+		}
 		fprintf(stderr, "index: %d\n", index);
 		if (index == SEARCH_LENGHT) {
 			_Py_PackageContext = p;
