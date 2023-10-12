@@ -400,22 +400,27 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(dllhandle);
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name)
-	#define DL_DATA(type, name, myname) \
-	myname = (type*)MyGetProcAddress(hmod_pydll, #name)
+	#define DL_DATA(name, myname) \
+	(FARPROC)myname = MyGetProcAddress(hmod_pydll, #name)
 
 	int *Py_VerboseFlag2;
-	Py_VerboseFlag2 = (int*)MyGetProcAddress(hmod_pydll, "Py_VerboseFlag");
+	DL_DATA(Py_VerboseFlag, Py_VerboseFlag2);
 	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
 
-	DL_DATA(_PyRuntimeState, _PyRuntime, _My_PyRuntime);
-	fprintf(stderr, "PKGCONTEXTb: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	DL_DATA(_PyRuntime, _My_PyRuntime);
+
+	fprintf(stderr, "current_thread: %d\n", PyThread_get_thread_ident());
+	fprintf(stderr, "main_thread: %d\n", _My_PyRuntime->main_thread);
+	fprintf(stderr, "Omain_thread: %d\n", _PyRuntime.main_thread);
+
+	fprintf(stderr, "PKGCONTEXTb: %s\n", _My_PyRuntime->imports.pkgcontext);
 	fprintf(stderr, "OPKGCONTEXTb: %s\n", _PyRuntime.imports.pkgcontext);
 
 	#endif
 	#endif
 
 	PyObject *m = PyModule_Create(&moduledef);
-	fprintf(stderr, "PKGCONTEXTa: %s\n", (*_My_PyRuntime).imports.pkgcontext);
+	fprintf(stderr, "PKGCONTEXTa: %s\n", _My_PyRuntime->imports.pkgcontext);
 	fprintf(stderr, "OPKGCONTEXTa: %s\n", _PyRuntime.imports.pkgcontext);
 	return m;
 }
