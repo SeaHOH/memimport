@@ -407,6 +407,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		p = _Py_PackageContext + offset;
 		index = 0;
 		fprintf(stderr, "offset: %d\n", offset);
+		fprintf(stderr, "p: %d\n", *(short*)p);
 		do {
 			if (*(short*)(mn+index) != *(short*)(p+index)) {
 				index = SEARCH_LENGHT;
