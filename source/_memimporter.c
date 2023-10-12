@@ -374,37 +374,36 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	uid_name = PyUnicode_FromString("__name__");
 
-	//#ifdef STANDALONE
-	//
-	//PyObject *pmodname = PyUnicode_FromString("sys");
-	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	//PyObject *sys = PyImport_Import(pmodname);
-	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	//Py_DECREF(pattrname);
-	//Py_DECREF(pmodname);
-	//Py_DECREF(sys);
-	//Py_DECREF(dllhandle);
-	//
-	//fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
-	//
-	//#define DL_FARPROC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
-	//#define DL_FUNC(name) DL_FARPROC(name)
-	//#define DL_DATA_PTR(name) DL_FARPROC(name)
-	//
-	//
-	//DL_DATA_PTR(_PyRuntime);
-	//
-	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
+	#ifdef STANDALONE
+
+	PyObject *pmodname = PyUnicode_FromString("sys");
+	PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	PyObject *sys = PyImport_Import(pmodname);
+	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	Py_DECREF(pattrname);
+	Py_DECREF(pmodname);
+	Py_DECREF(sys);
+	Py_DECREF(dllhandle);
+
+	fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
+
+	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
+	#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
+
+	_PyRuntimeState *_My_PyRuntime;
+	DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
+
+	fprintf(stderr, "_PyRuntime: %d %d\n", &(_PyRuntime.imports.pkgcontext), &(_My_PyRuntime->imports.pkgcontext));
 	#define SEARCH_RANGE 300
 	#define SEARCH_STEP 1
 	#define SEARCH_LENGHT 12
 	int offset = -SEARCH_RANGE, index = 0, pi;
-	_Py_PackageContext = _PyRuntime.imports.pkgcontext;
+	_Py_PackageContext = _My_PyRuntime->imports.pkgcontext;
 	char *mn = "_memimporter";
 	const char *p;
 	do {
-		p = *(const char**)(&(_PyRuntime.imports.pkgcontext) + offset);
+		p = *(const char**)(&(_My_PyRuntime->imports.pkgcontext) + offset);
 		index = 0;
 		pi = *(int*)(&p);
 		//fprintf(stderr, "p: %d\n", pi);
