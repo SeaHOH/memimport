@@ -14,7 +14,6 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 #if (PY_VERSION_HEX >= 0x030C0000)
 
 #define Py_BUILD_CORE
-#define HAVE_TIMES
 #include <Python.h>
 
 #define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
@@ -36,8 +35,8 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 #endif
 
 #if (PY_VERSION_HEX >= 0x030C0000)
-//_PyRuntimeState *_PyRuntime;
-#define PKGCONTEXT (_PyRuntime.imports.pkgcontext)
+_PyRuntimeState *_My_PyRuntime;
+#define PKGCONTEXT (_My_PyRuntime->imports.pkgcontext)
 //const char *pkgcontext = "";
 //#define PKGCONTEXT pkgcontext
 #else

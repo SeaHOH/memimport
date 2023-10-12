@@ -396,7 +396,22 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//DL_DATA_PTR(_PyRuntime);
 	//
 	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
-	fprintf(stderr, "PKGCONTEXTb: %s\n", _PyRuntime.imports.pkgcontext);
+	#define SEARCH_RANGE 100
+	int offset = -SEARCH_RANGE, hit = 0;
+	const char *p;
+	for ( ; offset < SEARCH_RANGE; offset = offset + 1 ) {
+		p = NULL;
+		_My_PyRuntime = &_PyRuntime + offset;
+		p = _My_PyRuntime->imports.pkgcontext;
+		if (p != NULL && strcmp("_memimporter", p) == 0) {
+			hit = 1;
+			offset = SEARCH_RANGE;
+		}
+	}
+	if (hit != 1) {
+		_My_PyRuntime = &_PyRuntime;
+	}
+	fprintf(stderr, "PKGCONTEXTb: %s\n", _My_PyRuntime->imports.pkgcontext);
 	//
 	//#endif
 	#endif
