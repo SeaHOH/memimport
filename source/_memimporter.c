@@ -399,9 +399,11 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(sys);
 	Py_DECREF(dllhandle);
 
-	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name)
+	fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
+
+	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
 	#define DL_DATA(name, myname) \
-	(FARPROC)myname = MyGetProcAddress(hmod_pydll, #name)
+	(FARPROC)myname = GetProcAddress(hmod_pydll, #name)
 
 	int *Py_VerboseFlag2;
 	DL_DATA(Py_VerboseFlag, Py_VerboseFlag2);
