@@ -394,7 +394,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	_PyRuntimeState *_My_PyRuntime;
 	DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
 
-	fprintf(stderr, "_PyRuntime: %d %d\n", *(int*)(&(_PyRuntime.imports.pkgcontext)), *(int*)(&(_My_PyRuntime->imports.pkgcontext)));
+	fprintf(stderr, "_PyRuntime: %d %d\n", (int)(&(_PyRuntime.imports.pkgcontext)), (int)(&(_My_PyRuntime->imports.pkgcontext)));
 	#define SEARCH_RANGE 300
 	#define SEARCH_STEP 1
 	#define SEARCH_LENGHT 12
