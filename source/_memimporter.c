@@ -37,20 +37,7 @@ static int dprintf(char *fmt, ...)
 #if (PY_VERSION_HEX >= 0x030C0000)
 
 static PyObject *uid_name;
-
-//#define Py_IMPORTED_SYMBOL __declspec(dllimport)
-//#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
-//#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
-//
-//PyAPI_FUNC(int) _PyImport_CheckSubinterpIncompatibleExtensionAllowed(
-//    const char *name);
-
-//#ifdef STANDALONE
-//
-//int (*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *);
-//
-//#endif
-extern _PyRuntimeState *_My_PyRuntime;
+//extern _PyRuntimeState *_PyRuntime;
 
 #endif
 
@@ -387,41 +374,32 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	uid_name = PyUnicode_FromString("__name__");
 
-	#ifdef STANDALONE
-
-	PyObject *pmodname = PyUnicode_FromString("sys");
-	PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	PyObject *sys = PyImport_Import(pmodname);
-	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	Py_DECREF(pattrname);
-	Py_DECREF(pmodname);
-	Py_DECREF(sys);
-	Py_DECREF(dllhandle);
-
-	fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
-
-	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
-	#define DL_DATA(name, myname) \
-	(FARPROC)myname = GetProcAddress(hmod_pydll, #name)
-
-	int *Py_VerboseFlag2;
-	DL_DATA(Py_VerboseFlag, Py_VerboseFlag2);
-	fprintf(stderr, "VerboseFlag: %d\n", *Py_VerboseFlag2);
-
-	DL_DATA(_PyRuntime, _My_PyRuntime);
-
-	fprintf(stderr, "_My_PyRuntime: %d\n", _My_PyRuntime);
-	fprintf(stderr, "_PyRuntime: %d\n", &_PyRuntime);
-
-	fprintf(stderr, "PKGCONTEXTb: %s\n", _My_PyRuntime->imports.pkgcontext);
-	fprintf(stderr, "OPKGCONTEXTb: %s\n", _PyRuntime.imports.pkgcontext);
-
-	#endif
+	//#ifdef STANDALONE
+	//
+	//PyObject *pmodname = PyUnicode_FromString("sys");
+	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	//PyObject *sys = PyImport_Import(pmodname);
+	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	//Py_DECREF(pattrname);
+	//Py_DECREF(pmodname);
+	//Py_DECREF(sys);
+	//Py_DECREF(dllhandle);
+	//
+	//fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
+	//
+	//#define DL_FARPROC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
+	//#define DL_FUNC(name) DL_FARPROC(name)
+	//#define DL_DATA_PTR(name) DL_FARPROC(name)
+	//
+	//
+	//DL_DATA_PTR(_PyRuntime);
+	//
+	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
+	fprintf(stderr, "PKGCONTEXTb: %s\n", _PyRuntime.imports.pkgcontext);
+	//
+	//#endif
 	#endif
 
-	PyObject *m = PyModule_Create(&moduledef);
-	fprintf(stderr, "PKGCONTEXTa: %s\n", _My_PyRuntime->imports.pkgcontext);
-	fprintf(stderr, "OPKGCONTEXTa: %s\n", _PyRuntime.imports.pkgcontext);
-	return m;
+	return PyModule_Create(&moduledef);
 }
