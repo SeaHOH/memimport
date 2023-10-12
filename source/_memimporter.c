@@ -408,7 +408,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		index = 0;
 		fprintf(stderr, "p: %d\n", p);
 		fprintf(stderr, "offset: %d\n", offset);
-		while ( p != NULL && index < SEARCH_LENGHT ) {
+		while ( p != NULL && *(int*)(&p) != -1 && index < SEARCH_LENGHT ) {
 			if (*(char*)(mn+index) != *(char*)(p+index)) {
 				index = SEARCH_LENGHT;
 			}
