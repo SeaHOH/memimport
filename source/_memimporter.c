@@ -397,6 +397,8 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//
 	//fprintf(stderr, "_PyRuntime: %d\n", _PyRuntime);
 	#define SEARCH_RANGE 10
+	#define SEARCH_STEP 2
+	#define SEARCH_LENGHT 12
 	int offset = 0, index = 0;
 	_Py_PackageContext = _PyRuntime.imports.pkgcontext;
 	char *mn = "_memimporter";
@@ -404,17 +406,19 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	do {
 		p = _Py_PackageContext + offset;
 		index = 0;
+		fprintf(stderr, "offset: %d\n", offset);
 		do {
 			if (*(short*)(mn+index) != *(short*)(p+index)) {
-				index = 12;
+				index = SEARCH_LENGHT;
 			}
-			index += 2;
-		} while ( index < 12 );
-		if (index == 12) {
+			index += SEARCH_STEP;
+		} while ( index < SEARCH_LENGHT );
+		fprintf(stderr, "index: %d\n", index);
+		if (index == SEARCH_LENGHT) {
 			_Py_PackageContext = p;
 			offset = SEARCH_RANGE;
 		}
-		offset += 2;
+		offset += SEARCH_STEP;
 	} while ( offset <= SEARCH_RANGE );
 	fprintf(stderr, "PKGCONTEXTb: %s\n", _Py_PackageContext);
 	//
