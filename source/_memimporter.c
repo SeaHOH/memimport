@@ -402,10 +402,12 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	for ( ; offset < SEARCH_RANGE; offset = offset + 1 ) {
 		p = NULL;
 		_My_PyRuntime = &_PyRuntime + offset;
-		p = _My_PyRuntime->imports.pkgcontext;
-		if (p != NULL && strcmp("_memimporter", p) == 0) {
-			hit = 1;
-			offset = SEARCH_RANGE;
+		if (*_My_PyRuntime != NULL) {
+			p = _My_PyRuntime->imports.pkgcontext;
+			if (p != NULL && strcmp("_memimporter", p) == 0) {
+				hit = 1;
+				offset = SEARCH_RANGE;
+			}
 		}
 	}
 	if (hit != 1) {
