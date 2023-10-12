@@ -386,7 +386,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	Py_DECREF(sys);
 	Py_DECREF(dllhandle);
 
-	fprintf(stderr, "dllhandle: %d\n", hmod_pydll);
+	//fprintf(stderr, "dllhandle: %s\n", hmod_pydll);
 
 	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
 	#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
@@ -394,7 +394,8 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	_PyRuntimeState *_My_PyRuntime;
 	DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
 
-	fprintf(stderr, "_PyRuntime: %d %d\n", &(_PyRuntime.imports.pkgcontext), &(_My_PyRuntime->imports.pkgcontext));
+	fprintf(stderr, "_PyRuntime: %s %s\n", &(_PyRuntime.imports.pkgcontext), &(_My_PyRuntime->imports.pkgcontext));
+	fprintf(stderr, "_PyRuntime: %d %d\n", *(int*)(&(_PyRuntime.imports.pkgcontext)), *(int*)(&(_My_PyRuntime->imports.pkgcontext)));
 	#define SEARCH_RANGE 300
 	#define SEARCH_STEP 1
 	#define SEARCH_LENGHT 12
