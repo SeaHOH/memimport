@@ -405,10 +405,10 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		p = _Py_PackageContext + offset;
 		index = 0;
 		do {
-			if (*(mn+index) != *(p+index)) {
+			if (*(short*)(mn+index) != *(short*)(p+index)) {
 				index = 12;
 			}
-			index ++;
+			index += 2;
 		} while ( index < 12 );
 		if (index == 12) {
 			_Py_PackageContext = p;
