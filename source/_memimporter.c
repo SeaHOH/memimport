@@ -426,7 +426,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	} while ( offset <= SEARCH_RANGE );
 	fprintf(stderr, "PKGCONTEXTb: %s\n", _Py_PackageContext);
 	//
-	//#endif
+	#endif
 	#endif
 
 	return PyModule_Create(&moduledef);
