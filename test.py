@@ -10,7 +10,7 @@ def prepare():
 
 def test_zipextimporter():
     import _memimporter
-    print(_memimporter)
+    print(_memimporter, file=sys.stderr)
 
     import importlib
     import zipimport
@@ -20,7 +20,7 @@ def test_zipextimporter():
     sys.path.insert(0, 'testpkg.zip')
 
     import testpkg._memimporter
-    print(testpkg._memimporter.__loader__)
+    print(testpkg._memimporter.__loader__, file=sys.stderr)
     import_module_old = testpkg._memimporter.import_module
     assert isinstance(testpkg._memimporter.__loader__, zipextimporter.ZipExtensionImporter)
     assert testpkg._memimporter is sys.modules['testpkg._memimporter']
@@ -36,7 +36,7 @@ def test_zipextimporter():
 
     from testpkg._memimporter import submod
     assert submod.loaded == True
-    print(submod.__loader__)
+    print(submod.__loader__, file=sys.stderr)
     assert isinstance(submod.__loader__, zipimport.zipimporter)
 
     assert testpkg._memimporter.submod is importlib.reload(testpkg._memimporter).submod
@@ -56,7 +56,7 @@ def test_memimport():
 
     from memimport import memimport, MemExtensionFileLoader
     mempkg_memimporter = memimport(data=get_data, fullname='mempkg._memimporter')
-    print(mempkg_memimporter.__loader__)
+    print(mempkg_memimporter.__loader__, file=sys.stderr)
     assert isinstance(mempkg_memimporter.__loader__, MemExtensionFileLoader)
     assert mempkg_memimporter is sys.modules['mempkg._memimporter']
     assert mempkg_memimporter is not _memimporter
@@ -66,7 +66,7 @@ def test_memimport():
     except Exception as e:
         err = e
     finally:
-        print('excepted error:', repr(err))
+        print('excepted error:', repr(err), file=sys.stderr)
         assert err
 
 
