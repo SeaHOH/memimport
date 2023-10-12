@@ -407,19 +407,22 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 		p = *(const char**)(&(_PyRuntime.imports.pkgcontext) + offset);
 		index = 0;
 		pi = *(int*)(&p);
-		fprintf(stderr, "p: %d\n", pi);
-		fprintf(stderr, "offset: %d\n", offset);
-		while ( (pi > 100000 || pi < -100000 ) && index < SEARCH_LENGHT ) {
-			if (*(char*)(mn+index) != *(char*)(p+index)) {
-				index = SEARCH_LENGHT;
-			}
-			index += SEARCH_STEP;
+		//fprintf(stderr, "p: %d\n", pi);
+		//fprintf(stderr, "offset: %d\n", offset);
+		if (pi > 100000 || pi < -100000 ) {
+			fprintf(stderr, "offset: %d | p: %d, %s\n", offset, pi, p);
 		}
-		fprintf(stderr, "index: %d\n", index);
-		if (index == SEARCH_LENGHT) {
-			_Py_PackageContext = p;
-			offset = SEARCH_RANGE;
-		}
+		//while ( (pi > 100000 || pi < -100000 ) && index < SEARCH_LENGHT ) {
+		//	if (*(char*)(mn+index) != *(char*)(p+index)) {
+		//		index = SEARCH_LENGHT;
+		//	}
+		//	index += SEARCH_STEP;
+		//}
+		//fprintf(stderr, "index: %d\n", index);
+		//if (index == SEARCH_LENGHT) {
+		//	_Py_PackageContext = p;
+		//	offset = SEARCH_RANGE;
+		//}
 		offset += SEARCH_STEP;
 	} while ( offset <= SEARCH_RANGE );
 	fprintf(stderr, "PKGCONTEXTb: %s\n", _Py_PackageContext);
