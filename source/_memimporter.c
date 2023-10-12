@@ -389,15 +389,16 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	#ifdef STANDALONE
 
-	PyObject *pmodname = PyUnicode_FromString("sys");
-	PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	PyObject *sys = PyImport_Import(pmodname);
-	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	Py_DECREF(pattrname);
-	Py_DECREF(pmodname);
-	Py_DECREF(sys);
-	Py_DECREF(dllhandle);
+	//PyObject *pmodname = PyUnicode_FromString("sys");
+	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	//PyObject *sys = PyImport_Import(pmodname);
+	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	//Py_DECREF(pattrname);
+	//Py_DECREF(pmodname);
+	//Py_DECREF(sys);
+	//Py_DECREF(dllhandle);
+	HMODULE hmod_pydll = LoadLibraryA("python312.dll");
 
 	#define DL_FUNC(name) (FARPROC)name = MyGetProcAddress(hmod_pydll, #name)
 	#define DL_DATA(name, myname) \
