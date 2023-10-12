@@ -406,6 +406,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	do {
 		p = *(const char*)(&_Py_PackageContext + offset);
 		index = 0;
+		fprintf(stderr, "p: %s\n", p);
 		fprintf(stderr, "offset: %d\n", offset);
 		do {
 			if (*(char*)(mn+index) != *(char*)(p+index)) {
