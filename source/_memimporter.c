@@ -376,55 +376,26 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	#ifdef STANDALONE
 
-	PyObject *pmodname = PyUnicode_FromString("sys");
-	PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	PyObject *sys = PyImport_Import(pmodname);
-	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	Py_DECREF(pattrname);
-	Py_DECREF(pmodname);
-	Py_DECREF(sys);
-	Py_DECREF(dllhandle);
+	//PyObject *pmodname = PyUnicode_FromString("sys");
+	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	//PyObject *sys = PyImport_Import(pmodname);
+	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	//Py_DECREF(pattrname);
+	//Py_DECREF(pmodname);
+	//Py_DECREF(sys);
+	//Py_DECREF(dllhandle);
 
 	//fprintf(stderr, "dllhandle: %s\n", hmod_pydll);
+	//
+	//#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
+	//#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
+	//
+	//_PyRuntimeState *_My_PyRuntime;
+	//DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
 
-	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
-	#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
-
-	_PyRuntimeState *_My_PyRuntime;
-	DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
-
-	fprintf(stderr, "_PyRuntime: %d %d\n", (int)(&(_PyRuntime.imports.pkgcontext)), (int)(&(_My_PyRuntime->imports.pkgcontext)));
-	#define SEARCH_RANGE 300
-	#define SEARCH_STEP 1
-	#define SEARCH_LENGHT 12
-	int offset = -SEARCH_RANGE, index = 0, pi;
-	_Py_PackageContext = _My_PyRuntime->imports.pkgcontext;
-	char *mn = "_memimporter";
-	const char *p;
-	do {
-		p = *(const char**)(&(_My_PyRuntime->imports.pkgcontext) + offset);
-		index = 0;
-		pi = *(int*)(&p);
-		//fprintf(stderr, "p: %d\n", pi);
-		//fprintf(stderr, "offset: %d\n", offset);
-		if (pi > 100000 || pi < -100000 ) {
-			fprintf(stderr, "offset: %d | p: %d, %s\n", offset, pi, p);
-		}
-		//while ( (pi > 100000 || pi < -100000 ) && index < SEARCH_LENGHT ) {
-		//	if (*(char*)(mn+index) != *(char*)(p+index)) {
-		//		index = SEARCH_LENGHT;
-		//	}
-		//	index += SEARCH_STEP;
-		//}
-		//fprintf(stderr, "index: %d\n", index);
-		//if (index == SEARCH_LENGHT) {
-		//	_Py_PackageContext = p;
-		//	offset = SEARCH_RANGE;
-		//}
-		offset += SEARCH_STEP;
-	} while ( offset <= SEARCH_RANGE );
-	fprintf(stderr, "PKGCONTEXTb: %s\n", _Py_PackageContext);
+	fprintf(stderr, "_PyRuntime: %d \n", sizeof(_PyRuntime));
+	fprintf(stderr, "_PyRuntimeState: %d \n", sizeof(_PyRuntimeState));
 	//
 	#endif
 	#endif
