@@ -13,29 +13,32 @@ EM_JS(PyObject*, _PyImport_InitFunc_TrampolineCall, (PyModInitFunction func), {
 
 #if (PY_VERSION_HEX >= 0x030C0000)
 
-#define Py_BUILD_CORE
-#include <Python.h>
-
-#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
-#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
-#define PyMODINIT_FUNC Py_EXPORTED_SYMBOL PyObject*
-
-#include <internal/pycore_moduleobject.h>
-#include <internal/pycore_runtime.h>
+//#define Py_BUILD_CORE
+//#include <Python.h>
+//
+//#define PyAPI_FUNC(RTYPE) Py_IMPORTED_SYMBOL RTYPE
+//#define PyAPI_DATA(RTYPE) extern Py_IMPORTED_SYMBOL RTYPE
+//#define PyMODINIT_FUNC Py_EXPORTED_SYMBOL PyObject*
+//
+//#include <internal/pycore_moduleobject.h>
+//#include <internal/pycore_runtime.h>
 /* Include/internal/pycore_moduleobject.h */
-//typedef struct {
-//    PyObject ob_base;
-//    PyObject *md_dict;
-//    PyModuleDef *md_def;
-//    void *md_state;
-//    PyObject *md_weaklist;
-//    PyObject *md_name;
-//} PyModuleObject;
+typedef struct {
+    PyObject ob_base;
+    PyObject *md_dict;
+    PyModuleDef *md_def;
+    void *md_state;
+    PyObject *md_weaklist;
+    PyObject *md_name;
+} PyModuleObject;
+
+int
+(*_PyImport_CheckSubinterpIncompatibleExtensionAllowed)(const char *name);
 
 #endif
 
 #if (PY_VERSION_HEX >= 0x030C0000)
-const char *_Py_PackageContext;
+const char *_Py_PackageContext = NULL;
 #endif
 #define PKGCONTEXT _Py_PackageContext
 

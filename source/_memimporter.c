@@ -2,17 +2,14 @@
 #define _WIN32_WINNT 0x0502
 #define NTDDI_VERSION 0x05020000
 
-#if (PY_VERSION_HEX < 0x030C0000) || !defined(STANDALONE)
 #include <Python.h>
-#endif
-#include "_memimporter.h"
-
 #include <windows.h>
 #include <stdio.h>
 
 static char module_doc[] =
 "Importer which can load extension modules from memory";
 
+#include "_memimporter.h"
 #include "MyLoadLibrary.h"
 #include "actctx.h"
 
@@ -376,26 +373,52 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 
 	#ifdef STANDALONE
 
-	//PyObject *pmodname = PyUnicode_FromString("sys");
-	//PyObject *pattrname = PyUnicode_FromString("dllhandle");
-	//PyObject *sys = PyImport_Import(pmodname);
-	//PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
-	//HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
-	//Py_DECREF(pattrname);
-	//Py_DECREF(pmodname);
-	//Py_DECREF(sys);
-	//Py_DECREF(dllhandle);
+	PyObject *pmodname = PyUnicode_FromString("sys");
+	PyObject *pattrname = PyUnicode_FromString("dllhandle");
+	PyObject *sys = PyImport_Import(pmodname);
+	PyObject *dllhandle = PyObject_GetAttr(sys, pattrname);
+	HMODULE hmod_pydll = (HMODULE)PyLong_AsVoidPtr(dllhandle);
+	Py_DECREF(pattrname);
+	Py_DECREF(pmodname);
+	Py_DECREF(sys);
+	Py_DECREF(dllhandle);
 
 	//fprintf(stderr, "dllhandle: %s\n", hmod_pydll);
-	//
-	//#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
-	//#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
-	//
-	//_PyRuntimeState *_My_PyRuntime;
-	//DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
 
-	fprintf(stderr, "_PyRuntime: %d | %llu | %llu\n", sizeof(_PyRuntime), &_PyRuntime, &(_PyRuntime.imports.pkgcontext));
-	//
+	#define DL_FUNC(name) (FARPROC)name = GetProcAddress(hmod_pydll, #name)
+	#define DL_DATA_PTR(name, myname) (FARPROC)myname = GetProcAddress(hmod_pydll, #name)
+
+	DL_FUNC(_PyImport_CheckSubinterpIncompatibleExtensionAllowed);
+
+	char **pkgcontext;
+	DL_DATA_PTR(_PyRuntime, pkgcontext);
+	fprintf(stderr, "_PyRuntime: %p\n", pkgcontext);
+
+	// 2800 2900
+	#define SEARCH_RANGE_START 100
+	#define SEARCH_RANGE_END 200
+	#define SEARCH_LENGHT 10
+	#define SEARCH_ADDR_LIMIT 0x200000u
+	unsigned int offset = SEARCH_RANGE_START;
+	BOOL inlimited;
+	char *mn = "_memimporter";
+	const char *p;
+	do {
+		p = *(pkgcontext + offset);
+		inlimited = (unsigned long)p > SEARCH_ADDR_LIMIT && (long)p != -1;
+		if (inlimited) {
+			fprintf(stderr, "offset: %d | p: %p | %s\n", offset, p, p);
+		} else {
+			fprintf(stderr, "offset: %d | p: %p\n", offset, p);
+		}
+		if (inlimited && memcmp(mn, p, SEARCH_LENGHT) == 0) {
+			_Py_PackageContext = p;
+			offset = SEARCH_RANGE_END;
+		}
+		offset ++;
+	} while ( offset <= SEARCH_RANGE_END );
+	fprintf(stderr, "PKGCONTEXTb: %s\n", _Py_PackageContext);
+
 	#endif
 	#endif
 
