@@ -394,8 +394,7 @@ PyMODINIT_FUNC PyInit__memimporter(void)
 	//_PyRuntimeState *_My_PyRuntime;
 	//DL_DATA_PTR(_PyRuntime, _My_PyRuntime);
 
-	fprintf(stderr, "_PyRuntime: %d \n", sizeof(_PyRuntime));
-	fprintf(stderr, "_PyRuntimeState: %d \n", sizeof(_PyRuntimeState));
+	fprintf(stderr, "_PyRuntime: %d | %llu | %llu\n", sizeof(_PyRuntime), &_PyRuntime, &(_PyRuntime.imports.pkgcontext));
 	//
 	#endif
 	#endif
