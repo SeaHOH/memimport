@@ -1,6 +1,7 @@
 // Need to define these to be able to use SetDllDirectory.
 #define _WIN32_WINNT 0x0502
 #define NTDDI_VERSION 0x05020000
+#define Py_BUILD_CORE_MODULE
 #include <Python.h>
 #include <windows.h>
 
@@ -9,6 +10,31 @@ static char module_doc[] =
 
 #include "MyLoadLibrary.h"
 #include "actctx.h"
+
+/* Work arround not being able to use _Py_PackageContext in Python 3.12+. */
+#if (PY_VERSION_HEX >= 0x030C00F0)
+#include <internal/pycore_runtime.h>
+#endif
+
+const char*
+_PyImport_SwapPackageContext(const char* newcontext)
+{
+#ifndef HAVE_THREAD_LOCAL
+	PyThread_acquire_lock(_PyRuntime.imports.extensions.mutex, WAIT_LOCK);
+#endif
+#if (PY_VERSION_HEX >= 0x030C00F0)
+	const char* oldcontext = (_PyRuntime.imports.pkgcontext);
+	(_PyRuntime.imports.pkgcontext) = newcontext;
+#else
+	/* On Python 3.11 or older we do this instead. */
+	const char* oldcontext = _Py_PackageContext;
+	_Py_PackageContext = newcontext;
+#endif
+#ifndef HAVE_THREAD_LOCAL
+	PyThread_release_lock(_PyRuntime.imports.extensions.mutex);
+#endif
+	return oldcontext;
+}
 
 #ifndef STANDALONE
 #include "python-dynload.h"
@@ -27,14 +53,6 @@ static int dprintf(char *fmt, ...)
 	return result;
 }
 */
-
-#if (PY_VERSION_HEX >= 0x030C0000)
-
-#include "_memimporter.h"
-
-static PyObject *uid_name;
-
-#endif
 
 #if (PY_VERSION_HEX >= 0x03030000)
 
@@ -62,20 +80,14 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 	PyObject* (*p)(void);
 	PyObject *m = NULL;
 	struct PyModuleDef *def;
-	#if (PY_VERSION_HEX >= 0x030C0000)
-	PyModuleObject *mo;
-	#elif (PY_VERSION_HEX < 0x03070000)
-	char *oldcontext;
-	#else
 	const char *oldcontext;
-	#endif
 	PyObject *name = PyUnicode_FromString(modname);
 
 	if (name == NULL)
 		return -1;
 
-	PyObject *modules = PyImport_GetModuleDict();
-	if (PyMapping_HasKeyString(modules, (const char *)name)) {
+	PyObject *sysmodules = PyImport_GetModuleDict();
+	if (PyMapping_HasKeyString(sysmodules, (const char *)name)) {
 		Py_DECREF(name);
 		return 0;
 	}
@@ -92,24 +104,10 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 		return -1;
 	}
 
-
-	#if (PY_VERSION_HEX < 0x030C0000)
-
-	oldcontext = _Py_PackageContext;
-	_Py_PackageContext = modname;
-
-	#endif
-
+	oldcontext = _PyImport_SwapPackageContext(modname);
 	p = (PyObject*(*)(void))init_func;
 	m = (*p)();
-
-	#if (PY_VERSION_HEX < 0x030C0000)
-
-	_Py_PackageContext = oldcontext;
-
-	#endif
-
-
+	_PyImport_SwapPackageContext(oldcontext);
 	if (PyErr_Occurred()) {
 		Py_DECREF(name);
 		return -1;
@@ -139,40 +137,10 @@ int do_import(FARPROC init_func, char *modname, PyObject *spec, PyObject **mod)
 	}
 	def->m_base.m_init = p;
 
-	#if (PY_VERSION_HEX >= 0x030C0000)
-
-	/* a hack instead of _PyImport_SwapPackageContext & _PyImport_ResolveNameWithPackageContext
-
-	   Origin:
-	     _PyImport_SwapPackageContext()
-	     call <module init func>
-	       <module init func> -> PyModule_Create() -> PyModule_Create2() -> PyModule_CreateInitialized()
-	         PyModule_CreateInitialized() -> _PyImport_ResolveNameWithPackageContext()
-	         PyModule_CreateInitialized() -> PyModule_New() -> PyModule_NewObject() -> module_init_dict()
-	           module_init_dict(): set <module attribute __name__>
-	           module_init_dict(): set <module struct member md_name>
-	     _PyImport_SwapPackageContext()
-
-	   Hack:
-	     call <module init func>
-	       ...
-	     re-set <module attribute __name__>
-	     re-set <module struct member md_name>
-	*/
-	mo = (PyModuleObject *)m;
-	if (strcmp(PyUnicode_AsUTF8(mo->md_name), modname) != 0) {
-		if (PyDict_SetItem(mo->md_dict, uid_name, name) != 0) {
-			Py_DECREF(name);
-			return -1;
-		}
-		Py_XDECREF(mo->md_name);
-		Py_XSETREF(mo->md_name, Py_NewRef(name));
-	}
-
-	#endif
-
     #if (PY_VERSION_HEX >= 0x03070000)
 
+    PyObject *modules = NULL;
+    modules = PyImport_GetModuleDict();
     res = _PyImport_FixupExtensionObject(m, name, name, modules);
 
     #else
@@ -206,9 +174,7 @@ import_module(PyObject *self, PyObject *args)
 	ULONG_PTR cookie = 0;
 	PyObject *findproc;
 	PyObject *spec;
-	#ifndef STANDALONE
 	BOOL res;
-	#endif
 
 	int imp_res = -1;
 	struct PyModuleDef *def;
@@ -316,15 +282,7 @@ import_module(PyObject *self, PyObject *args)
 static PyObject *
 get_verbose_flag(PyObject *self, PyObject *args)
 {
-	#if (PY_VERSION_HEX >= 0x030C0000)
-
-	return PyLong_FromLong(_Py_GetConfig()->verbose);
-
-	#else
-
 	return PyLong_FromLong(Py_VerboseFlag);
-
-	#endif
 }
 
 static PyMethodDef methods[] = {
@@ -350,11 +308,5 @@ static struct PyModuleDef moduledef = {
 
 PyMODINIT_FUNC PyInit__memimporter(void)
 {
-	#if (PY_VERSION_HEX >= 0x030C0000)
-
-	uid_name = PyUnicode_FromString("__name__");
-
-	#endif
-
 	return PyModule_Create(&moduledef);
 }
