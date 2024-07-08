@@ -44,13 +44,16 @@ True
 
 """
 
-import os
 import sys
+import zipimport
 from zipimport import *
 from _frozen_importlib import ModuleSpec, spec_from_loader
 from _frozen_importlib_external import ExtensionFileLoader, spec_from_file_location
 
-from memimport import memimport, export_hook_name, __version__
+from memimport import (
+        memimport, export_hook_name, __version__,
+        _path_join, _path_dirname, _path_basename, _path_exists, _makedirs
+)
 
 
 __all__ = [
@@ -132,21 +135,21 @@ def _get_module_info(self, fullname, _raise=False, _tempcache=[None, None]):
 
 # Return the path of cached extension file, for loading memimport excluded modules.
 def _get_cached_path(self, path):
-    eggs_cache = os.getenv('EGGS_CACHE')
+    from nt import environ
+    eggs_cache = environ.get('EGGS_CACHE')
     if eggs_cache is None:
-        home = os.getenv('PYTHONHOME')
-        if eggs_cache is None:
-            from zipimport import __file__
-            home = os.path.dirname(os.path.dirname(__file__))
-        os.environ['EGGS_CACHE'] = eggs_cache = os.path.join(home, 'Eggs-Cache')
-    path_cache = os.path.join(os.path.abspath(eggs_cache),
-                              os.path.basename(self.archive) + '-tmp',
-                              path)
-    if os.path.exists(path_cache):
+        home = environ.get('PYTHONHOME')
+        if home is None:
+            home = _path_dirname(_path_dirname(zipimport.__file__))
+        environ['EGGS_CACHE'] = eggs_cache = _path_join(home, 'Eggs-Cache')
+    path_cache = _path_join(eggs_cache,
+                            _path_basename(self.archive) + '-tmp',
+                            path)
+    if _path_exists(path_cache):
         _verbose_msg('# zipextimporter: '
                     f'found cached {path} at {path_cache}', 2)
     else:
-        os.makedirs(os.path.dirname(path_cache), exist_ok=True)
+        _makedirs(_path_dirname(path_cache))
         open(path_cache, 'wb').write(self.get_data(path))
         _verbose_msg('# zipextimporter: '
                     f'extracted cached {path} to {path_cache}', 2)

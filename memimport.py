@@ -34,7 +34,6 @@ Sample usage
 
 '''
 
-import os
 import sys
 from _frozen_importlib import ModuleSpec
 from _frozen_importlib_external import ExtensionFileLoader
@@ -113,7 +112,7 @@ def memimport(data=None, spec=None,
         origin = origin.replace('/', '\\')
         if loader is None:
             if data is None:
-                if not os.path.isfile(origin):
+                if not _path_isfile(origin):
                     raise ValueError('argument "loader" MUST be provided, or '
                                      'argument "origin" MUST be a locale file.')
                 loader = ExtensionFileLoader(fullname, origin)
@@ -168,3 +167,55 @@ def set_verbose(i=1):
     '''Set verbose, the argument as same as built-in function int's.'''
     global verbose
     verbose = int(i)
+
+
+################################################################################
+# Replacement for functions in non-built-in/non-frozen modules
+################################################################################
+
+from _frozen_importlib_external import \
+        _path_join, _path_stat, _path_isfile, _path_isdir
+
+def _path_split(path):
+    '''Replacement for os.path.split.'''
+    i = path.rfind('\\')
+    if i < 0:
+        return '', path
+    return path[:i], path[i+1:]
+
+def _path_dirname(path):
+    '''Replacement for os.path.dirname.'''
+    return _path_split(path)[0]
+
+def _path_basename(path):
+    '''Replacement for os.path.basename.'''
+    return _path_split(path)[1]
+
+def _path_exists(path):
+    '''Replacement for os.path.exists.'''
+    try:
+        _path_stat(path)
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+from nt import mkdir as _mkdir
+
+def _makedirs(name, mode=0o777):
+    '''Replacement for os.makedirs.'''
+    head, tail = _path_split(name)
+    if not tail:
+        head, tail = _path_split(head)
+    if head and tail and not _path_exists(head):
+        try:
+            _makedirs(head)
+        except FileExistsError:
+            pass
+        if tail == '.':           # xxx/newdir/. exists if xxx/newdir exists
+            return
+    try:
+        _mkdir(name, mode)
+    except OSError:
+        if not _path_isdir(name):
+            raise
