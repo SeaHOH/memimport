@@ -10,9 +10,9 @@ zipextimporter.py contains the ZipExtImporter class which allows to
 load Python binary extension modules contained in a zip.archive,
 without unpacking them to the file system.
 
-Call the zipextimporter.install(hook=False) to monkey patch the zipimporter,
-or call the zipextimporter.install(hook=True) to install the import hook,
-add a zip-file containing .pyd or .dll extension modules to sys.path,
+Call the `zipextimporter.install(hook=False)` to monkey patch the zipimporter,
+or call the `zipextimporter.install(hook=True)` to install the import hook,
+add a zip-file containing "pyd" or "dll" extension modules to sys.path,
 and import them.
 
 It uses the _memimporter (memimport) extension which uses code from
@@ -22,7 +22,7 @@ function LoadLibrary.
 Sample usage
 ============
 
-You have to prepare a zip-archive 'lib.zip' containing
+You have to prepare a zip-archive "lib.zip" containing
 your Python's _socket.pyd for this example to work.
 
 >>> import zipextimporter
@@ -117,11 +117,11 @@ def _get_module_info(self, fullname, _raise=False, _tempcache=[None, None]):
             return _ModuleInfo(path, is_ext, is_package, None)
         if not suffix.endswith('.pyd') and initname not in self.get_data(path):
             _verbose_msg('# zipextimporter: '
-                        f'skiped {path} in zipfile {self.archive}, '
+                        f'skiped {path!r} in zipfile {self.archive!r}, '
                          'it is not a Python extension', 2)
             continue
         _verbose_msg('# zipextimporter: '
-                    f'found {path} in zipfile {self.archive}', 2)
+                    f'found {path!r} in zipfile {self.archive!r}', 2)
         if fullname in _names_cached:
             path = _get_cached_path(self, path)
         else:
@@ -147,20 +147,20 @@ def _get_cached_path(self, path):
                             path)
     if _path_exists(path_cache):
         _verbose_msg('# zipextimporter: '
-                    f'found cached {path} at {path_cache}', 2)
+                    f'found cached {path!r} at {path_cache!r}', 2)
     else:
         _makedirs(_path_dirname(path_cache))
         open(path_cache, 'wb').write(self.get_data(path))
         _verbose_msg('# zipextimporter: '
-                    f'extracted cached {path} to {path_cache}', 2)
+                    f'extracted cached {path!r} to {path_cache!r}', 2)
     return path_cache
 
 
 # Return the path if it represent a directory.
 def _get_dir_path(self, fullname):
-    path = self.prefix + fullname.rpartition(".")[2]
-    if f"{path}\\" in self._files:
-        return f"{self.archive}\\{path}"
+    path = self.prefix + fullname.rpartition('.')[2]
+    if f'{path}\\' in self._files:
+        return f'{self.archive}\\{path}'
 
 
 class ZipExtensionImporter(zipimporter):
@@ -297,7 +297,6 @@ def _install_hook():
     ## # Not sure if this is needed...
     ## import importlib
     ## importlib.invalidate_caches()
-
 
 def _monkey_patch():
     '''Monkey patch the zipimporter, best compatibility.'''

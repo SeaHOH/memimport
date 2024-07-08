@@ -1,4 +1,4 @@
-r'''memimport - an import function which can import extension modules
+r"""memimport - an import function which can import extension modules
 from memory without write them to the file system.
 
 The _memimporter module is part of the py2exe package.
@@ -19,7 +19,7 @@ Sample usage
 
 >>> from memimport import memimport
 >>> data = some_gen(*any_args)  # read from Disk or Web
->>> mem_mod = memimport(data=data, fullname='mem_mod')
+>>> mem_mod = memimport(data=data, fullname="mem_mod")
 >>> print(mem_mod)
 <module 'mem_mod' from '<unknown>'>
 >>> mem_mod.__file__
@@ -32,7 +32,7 @@ Sample usage
 'Some error message'
 >>>
 
-'''
+"""
 
 import sys
 from _frozen_importlib import ModuleSpec
