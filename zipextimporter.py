@@ -234,6 +234,10 @@ class ZipExtensionImporter(zipimporter):
             self.zipimporter = zipimporter(path_or_importer)
             if hasattr(zipimporter, '_files'):  # py <= 37, built-in
                 super().__init__(path_or_importer)
+                try:
+                    _fix_up_directory(self._files)
+                except:
+                    pass
 
     def __getattr__(self, name):
         return getattr(self.zipimporter, name)
@@ -335,7 +339,7 @@ def install(hook=hasattr(zipimporter, '_files')):
         _install_hook()
     else:
         _monkey_patch()
-    if sys.version_info < (3, 14):
+    if (3, 7) < sys.version_info < (3, 14):
         _fix_up_read_directory()
 
 def _install_hook():
