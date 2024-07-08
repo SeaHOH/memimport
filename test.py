@@ -4,9 +4,8 @@ def prepare():
     import zipfile
     import _memimporter
     with zipfile.ZipFile('testpkg.zip', 'w') as zf:
-        zf.writestr('testpkg\\__init__.py', b'')
-        zf.write(_memimporter.__file__, 'testpkg\\_memimporter\\__init__.pyd')
-        zf.writestr('testpkg\\_memimporter\\submod.py', b'loaded = True')
+        zf.write(_memimporter.__file__, 'testpkg/_memimporter/__init__.pyd')
+        zf.writestr('testpkg/_memimporter/submod.py', b'loaded = True')
 
 def test_zipextimporter():
     import importlib
@@ -15,6 +14,10 @@ def test_zipextimporter():
     zipextimporter.install()
     zipextimporter.set_verbose(2)
     sys.path.insert(0, 'testpkg.zip')
+
+    # namespace package with implicit directory
+    import testpkg
+    assert 'namespace' in str(testpkg.__loader__).lower()
 
     import testpkg._memimporter
     print(testpkg._memimporter.__loader__)

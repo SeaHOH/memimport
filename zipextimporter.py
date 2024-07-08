@@ -130,11 +130,12 @@ def _get_module_info(self, fullname, _raise=False, _tempcache=[None, None]):
             continue
         _verbose_msg('# zipextimporter: '
                     f'found {path!r} in zipfile {self.archive!r}', 2)
-        if fullname in _names_cached:
-            path = _get_cached_path(self, path)
-        else:
-            path = f'{self.archive}\\{path}'
-        mi = _ModuleInfo(path, is_ext, is_package, False)
+        mi = _ModuleInfo(
+            f'{self.archive}\\{path}',
+            is_ext,
+            is_package,
+            fullname in _names_cached and _get_cached_path(self, path) or None
+        )
         _tempcache[:] = (fullname, self.archive), mi
         return mi
     if _raise:
@@ -262,7 +263,7 @@ class ZipExtensionImporter(zipimporter):
                 return None, []
             if mi.is_ext:
                 if mi.cached:
-                    loader = ExtensionFileLoader(fullname, mi.path)
+                    loader = ExtensionFileLoader(fullname, mi.cached)
                 else:
                     loader = self.zipextimporter
             else:
@@ -283,11 +284,13 @@ class ZipExtensionImporter(zipimporter):
                     return spec
                 return None
             if mi.is_ext:
+                search = mi.is_package and [_path_dirname(mi.path)] or None
                 if mi.cached:
-                    return spec_from_file_location(fullname, mi.path)
+                    return spec_from_file_location(
+                            fullname, mi.cached,
+                            submodule_search_locations=search)
                 spec = ModuleSpec(fullname, self.zipextimporter, origin=mi.path)
-                if mi.is_package:
-                    spec.submodule_search_locations = [mi.path.rpartition('\\')[0]]
+                spec.submodule_search_locations = search
             else:
                 try:
                     loader = self.zipimporter
