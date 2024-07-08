@@ -43,7 +43,7 @@ from _frozen_importlib_external import ExtensionFileLoader
 from _memimporter import import_module
 
 
-__version__ = '0.13.0.0.post7'
+__version__ = '0.13.0.0.post8'
 
 __all__ = [
     'memimport_from_data', 'memimport_from_loader', 'memimport_from_spec',
