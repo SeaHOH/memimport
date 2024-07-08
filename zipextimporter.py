@@ -342,7 +342,7 @@ def install(hook=hasattr(zipimporter, '_files')):
         _install_hook()
     else:
         _monkey_patch()
-    if (3, 7) < sys.version_info < (3, 14):
+    if (3, 8) < sys.version_info < (3, 14):
         _fix_up_read_directory()
 
 def _install_hook():
