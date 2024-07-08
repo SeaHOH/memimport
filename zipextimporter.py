@@ -163,6 +163,58 @@ def _get_dir_path(self, fullname):
         return f'{self.archive}\\{path}'
 
 
+# Implicit directories will cause namespace import fail, add them here.
+def _fix_up_directory(files, archive=None):
+    def ensure_archive(path):
+        nonlocal archive, filter
+        archive = files[path][0][:-len(path)].rstrip('\\')
+        filter = fix_up_1
+        fix_up_1(path)
+    def fix_up_0(path):
+        nonlocal count
+        while True:
+            i = path.rfind('\\')
+            if i < 0:
+                return
+            dirpath = path[:i+1]
+            if dirpath in files:
+                return
+            path = path[:i]
+            files[dirpath] = None  # ('\\'.join([archive, path]), *[0]*7)
+            count += 1
+    def fix_up_1(path):
+        nonlocal filter
+        fix_up_0(path)
+        if '\\' in path:
+            if count == 0:
+                return 1  # quick finish
+            filter = fix_up_0
+    count = 0
+    filter = archive is None and ensure_archive or fix_up_1
+    for path in tuple(files):
+        if filter(path):
+            break
+    if count:
+        _verbose_msg('# zipextimporter: '
+                    f'added {count} implicit directories in {archive!r}')
+    return files
+
+def _read_directory_fixed(archive):
+    return _fix_up_directory(zipimport._read_directory_orig(archive), archive)
+
+def _fix_up_read_directory():
+    if not hasattr(zipimport, '_read_directory_orig'):
+        zipimport._read_directory_orig = zipimport._read_directory
+        try:
+            for files in zipimport._zip_directory_cache.values():
+                _fix_up_directory(files)
+        except:
+            del zipimport._read_directory_orig
+        else:
+            zipimport._read_directory = _read_directory_fixed
+            _verbose_msg('# zipextimporter: `_fix_up_read_directory()` succeeded')
+
+
 class ZipExtensionImporter(zipimporter):
     '''Import Python extensions from Zip files, just likes built-in zipimporter.
     Supported file extensions: "pyd", "dll", " "(none).
@@ -275,7 +327,8 @@ def install(hook=hasattr(zipimporter, '_files')):
         _install_hook()
     else:
         _monkey_patch()
-
+    if sys.version_info < (3, 14):
+        _fix_up_read_directory()
 
 def _install_hook():
     '''Install the zipextimporter to `sys.path_hooks`.'''
