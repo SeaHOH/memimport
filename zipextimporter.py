@@ -97,6 +97,13 @@ class _ModuleInfo:
         self.path, self.is_ext, self.is_package, self.cached = args
 
 
+def _get_files(self):
+    try:
+        return self._files
+    except AttributeError:
+        return self._get_files()  # py >= 313
+
+
 # Return some information about a module.
 def _get_module_info(self, fullname, _raise=False, _tempcache=[None, None]):
     key, mi = _tempcache
@@ -109,9 +116,10 @@ def _get_module_info(self, fullname, _raise=False, _tempcache=[None, None]):
     else:
         searchorder = _searchorder
     _path = self.prefix + name
+    files = _get_files(self)
     for suffix, is_ext, is_package in searchorder:
         path = _path + suffix
-        if path not in self._files:
+        if path not in files:
             continue
         if not is_ext:
             return _ModuleInfo(path, is_ext, is_package, None)
@@ -159,7 +167,7 @@ def _get_cached_path(self, path):
 # Return the path if it represent a directory.
 def _get_dir_path(self, fullname):
     path = self.prefix + fullname.rpartition('.')[2]
-    if f'{path}\\' in self._files:
+    if f'{path}\\' in _get_files(self):
         return f'{self.archive}\\{path}'
 
 
