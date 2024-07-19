@@ -203,7 +203,7 @@ def _fix_up_directory(files, archive=None):
     for path in tuple(files):
         if filter(path):
             break
-    if count:
+    else:
         _verbose_msg('# zipextimporter: '
                     f'added {count} implicit directories in {archive!r}')
     return files
@@ -236,7 +236,7 @@ class ZipExtensionImporter(zipimporter):
             if hasattr(zipimporter, '_files'):  # py <= 37, built-in
                 super().__init__(path_or_importer)
                 try:
-                    _fix_up_directory(self._files)
+                    _fix_up_directory(self._files, self.archive)
                 except:
                     pass
 

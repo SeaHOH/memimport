@@ -13,10 +13,10 @@ jobs:
         python-version: [ '3.11', '3.10', '3.9', '3.8', '3.7', '3.6' ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           architecture: ${{ matrix.python-arch }}
           python-version: ${{ matrix.python-version }}
@@ -43,7 +43,7 @@ jobs:
           echo "wheelname=$wheelname" >> $env:GITHUB_OUTPUT
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.build.outputs.wheelname }}
           path: dist/${{ steps.build.outputs.wheelname }}
@@ -60,10 +60,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: ./artifacts
 

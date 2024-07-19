@@ -11,8 +11,8 @@ def test_zipextimporter():
     import importlib
     import zipimport
     import zipextimporter
-    zipextimporter.install()
     zipextimporter.set_verbose(2)
+    zipextimporter.install()
     sys.path.insert(0, 'testpkg.zip')
 
     # namespace package with implicit directory
