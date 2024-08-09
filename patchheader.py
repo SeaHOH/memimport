@@ -22,6 +22,7 @@ def ends_replace(f, l, s, p):
     with open(rf'{IncludeDir}\{f}', 'r+b') as f:
         f.seek(-len(s), 2)
         _s = f.read()
+        print(_s)
         if _s == s:
             if not p:
                 f.seek(-len(s), 2)
