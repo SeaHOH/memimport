@@ -58,7 +58,9 @@ _memimporter = Extension(
 
 if __name__ == "__main__":
     import fixupver
+    import patchheader
     fixupver.fix_up("memimport.py")
+    patchheader.patch()
 
     setup(
         name="memimport",
@@ -109,3 +111,5 @@ if __name__ == "__main__":
         ext_modules=[_memimporter],
         py_modules=["memimport", "zipextimporter"],
     )
+
+    patchheader.unpatch()

@@ -1,5 +1,5 @@
-#include <Python.h>
 #include <windows.h>
+#include "Python-dynload.h"
 
 #include "MemoryModule.h"
 #include "MyLoadLibrary.h"
@@ -44,14 +44,25 @@ BOOL WINAPI MyGetModuleHandleExW(DWORD, LPCWSTR, HMODULE *)
  * A linked list of loaded MemoryModules.
  */
 typedef struct tagLIST {
-	HCUSTOMMODULE module;
+	union {
+		HCUSTOMMODULE module;
+		LPCWSTR wname;
+	}
 	LPCSTR name;
 	struct tagLIST *next;
 	struct tagLIST *prev;
-	int refcount;
+	union {
+#ifdef _WIN64
+		DWORD64 refcount;
+#else
+		DWORD refcount;
+#endif
+		void *userdata;
+	}
 } LIST;
 
 static LIST *libraries;
+static LIST *hookcontexts;
 
 int level;
 
@@ -114,6 +125,19 @@ static LIST *_AddMemoryModule(LPCSTR name, HCUSTOMMODULE module)
 }
 
 /****************************************************************
+ * Delete a entry from the linked LIST
+ */
+static void _DelListEntry(LIST *entry)
+{
+	if (entry->prev)
+		entry->prev->next = entry->next;
+	if (entry->next)
+		entry->next->prev = entry->prev;
+	free(entry);
+	entry = NULL;
+}
+
+/****************************************************************
  * Helper functions for MemoryLoadLibraryEx
  */
 static FARPROC _GetProcAddress(HCUSTOMMODULE module, LPCSTR name, void *userdata)
@@ -126,7 +150,7 @@ static void _FreeLibrary(HCUSTOMMODULE module, void *userdata)
 	MyFreeLibrary(module);
 }
 
-PyObject *CallFindproc(PyObject *findproc, LPCSTR filename)
+/*PyObject *CallFindproc(PyObject *findproc, LPCSTR filename)
 {
 	PyObject *res = NULL;
 	PyObject *args = PyTuple_New(1);
@@ -137,7 +161,7 @@ PyObject *CallFindproc(PyObject *findproc, LPCSTR filename)
 	res = PyObject_CallObject(findproc, args);
 	Py_DECREF(args);
 	return res;
-}
+}*/
 
 static HCUSTOMMODULE _LoadLibrary(LPCSTR filename, void *userdata)
 {
@@ -161,13 +185,15 @@ static HCUSTOMMODULE _LoadLibrary(LPCSTR filename, void *userdata)
 		//
 		// So we implement a special CallFindproc function
 		// which encapsulates the dance we have to do.
-//		PyObject *res = PyObject_CallFunction(findproc, "s", filename);
-		PyObject *res = CallFindproc(findproc, filename);
-		if (res && PyBytes_AsString(res)) {
-			result = MemoryLoadLibraryEx(PyBytes_AsString(res), PyBytes_GET_SIZE(res),
-				MemoryDefaultAlloc, MemoryDefaultFree,
-				_LoadLibrary, _GetProcAddress, _FreeLibrary,
-				userdata);
+		PyObject *res = PyObject_CallFunction(findproc, "s", filename);
+		//PyObject *res = CallFindproc(findproc, filename);
+		if (res) {
+			size_t size = PyBytes_GET_SIZE(res);
+			if (size)
+				result = MemoryLoadLibraryEx(PyBytes_AsString(res), size,
+					MemoryDefaultAlloc, MemoryDefaultFree,
+					_LoadLibrary, _GetProcAddress, _FreeLibrary,
+					userdata);
 			Py_DECREF(res);
 			if (result) {
 				lib = _AddMemoryModule(filename, result);
@@ -229,8 +255,10 @@ BOOL MyFreeLibrary(HMODULE module)
 {
 	LIST *lib = _FindMemoryModule(NULL, module);
 	if (lib) {
-		if (--lib->refcount == 0)
+		if (--lib->refcount == 0) {
 			MemoryFreeLibrary(module);
+			_DelListEntry(lib);
+		}
 		return TRUE;
 	} else {
 		SetLastError(0);
@@ -260,4 +288,61 @@ FARPROC MyGetProcAddress(HMODULE module, LPCSTR procname)
 			proc = (FARPROC)MyGetModuleHandleExW;
 	}
 	return proc;
+}
+
+/****************************************************************
+ * Hook functions
+ */
+extern WORD Py_Minor_Version;
+
+/* Insert a MemoryModule into the linked list of loaded modules */
+LIST *SetHookContext(LPCSTR name, void *userdata)
+{
+	LIST *entry = (LIST *)malloc(sizeof(LIST));
+	entry->wname = PyUnicode_AsWideCharString(name, NULL);
+	entry->name = name;
+	entry->next = hookcontexts;
+	entry->prev = NULL;
+	entry->userdata = userdata;
+	hookcontexts = entry;
+	return entry;
+}
+
+static LIST *_FindHookContext(LPCSTR name, LPCWSTR wname)
+{
+	LIST *context = hookcontexts;
+	while (context) {
+		if ((name && 0 == _stricmp(name, context->name)) ||
+		   (wname && 0 == _wcsicmp(wname, context->wname)))
+			return context;
+		context = context->next;
+	}
+	return NULL;
+}
+
+HMODULE WINAPI LoadLibraryExWHook(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+	HMODULE hmodule;
+	LIST *context = _FindHookContext(NULL, lpLibFileName);
+
+	if (context)
+		hmodule = MyLoadLibrary(context->name, NULL, 0, context->userdata);
+		if (hmodule)
+			goto finally;
+
+	hmodule = LoadLibraryExW(lpLibFileName, hFile, dwFlags);
+
+finally:
+	_DelListEntry(context);
+	return hmodule;
+}
+
+FARPROC WINAPI GetProcAddressHook(HMODULE hModule, LPCSTR lpProcName)
+{
+	return MyGetProcAddress(hModule, lpProcName);
+}
+
+BOOL WINAPI FreeLibraryHook(HMODULE hLibModule)
+{
+	return MyFreeLibrary(hLibModule);
 }

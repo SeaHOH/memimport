@@ -1,7 +1,5 @@
 name: CI
-on:
-  push:
-    tags: [ '*' ]
+on: [ push ]
 
 jobs:
   build:
@@ -10,7 +8,7 @@ jobs:
     strategy:
       matrix:
         python-arch: [ 'x64', 'x86' ]
-        python-version: [ '3.11', '3.10', '3.9', '3.8', '3.7', '3.6' ]
+        python-version: [ '3.12' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +34,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          python setup.py bdist_wheel
+          python setup.py bdist_wheel --python-tag cp36 --abi-tag abi3
           cd dist
           dir
           $wheelname = python -c "import glob; print(glob.glob('*.whl')[0])"
@@ -50,6 +48,7 @@ jobs:
 
       - name: Test
         run: |
+          python -c "__import__('os')._exit(1)"
           pip install dist/${{ steps.build.outputs.wheelname }}
           python test.py prepare
           python test.py test

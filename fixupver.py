@@ -6,15 +6,15 @@ def fix_up(file):
     global version
     if version is None:
         version =  open('VERSION').read().split()[0]
-    context = open(file).read()
-    context_fix_up = re.sub(
+    content = open(file).read()
+    content_fix_up = re.sub(
         '''^__version__ = ['"][^'"]*['"]$''',
         f"__version__ = '{version}'",
-        context, 1, re.MULTILINE
+        content, 1, re.MULTILINE
     )
-    if context_fix_up != context:
+    if content_fix_up != content:
         print('Version tag has been changed, now updating...')
-        open(file, 'w', newline='\n').write(context_fix_up)
+        open(file, 'w', newline='\n').write(content_fix_up)
         print('Version tag has been updated.')
 
 if __name__ == '__main__':

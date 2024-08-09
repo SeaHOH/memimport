@@ -9,5 +9,10 @@ BOOL MyFreeLibrary(HMODULE);
 
 FARPROC MyGetProcAddress(HMODULE, LPCSTR);
 
+HMODULE WINAPI LoadLibraryExWHook(LPCWSTR, HANDLE, DWORD);
+
+FARPROC WINAPI GetProcAddressHook(HMODULE, LPCSTR);
+
+BOOL WINAPI FreeLibraryHook(HMODULE);
 
 #endif
