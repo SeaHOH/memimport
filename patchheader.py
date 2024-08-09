@@ -3,7 +3,7 @@ import sys
 IncludeDir = rf'{sys.prefix}\Include'
 
 ends_replace_entries = [
-['pyport.h', 26,
+['pyport.h', (24, 3),
 b'''
 #undef PyAPI_FUNC
 #undef PyAPI_DATA
@@ -14,15 +14,24 @@ b'''
 #       define PyAPI_FUNC(RTYPE) RTYPE
 #       define PyAPI_DATA(RTYPE) RTYPE
 #endif
+
 #endif /* Py_PYPORT_H */
 ''']
 ]
 
+CR = b'\r'
+LF = b'\n'
+CL = b'\r\n'
+
 def ends_replace(f, l, s, p):
     with open(rf'{IncludeDir}\{f}', 'r+b') as f:
+        f.seek(-2, 2)
+        nl = f.read() == CL and CL or CR
+        s = s.replace(CL, CR).replace(CR, nl)
+        l = l[0] + l[1] * len(nl)
+
         f.seek(-len(s), 2)
         _s = f.read()
-        print(_s)
         if _s == s:
             if not p:
                 f.seek(-len(s), 2)
