@@ -34,7 +34,7 @@ jobs:
       - name: Build
         id: build
         run: |
-          python setup.py bdist_wheel --python-tag cp36 --abi-tag abi3
+          python setup.py bdist_wheel --python-version 36 --abi abi3
           cd dist
           dir
           $wheelname = python -c "import glob; print(glob.glob('*.whl')[0])"
